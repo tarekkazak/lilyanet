@@ -1,21 +1,24 @@
 var _ = require('lodash'),
-    IO_EVENT = require('./app/common/events'),
-    React = require('react'),
-    Word = require('./public/js/components/word.jsx');
+    IO_EVENT = require('../../common/events'),
+    React = require('react/addons'),
+    Word = require('../../../public/js/components/word.jsx');
 
 module.exports = function Letters(io){
         var lettersForWord = [],
         singleLetter = '';
 
     var WordFac = React.createFactory(Word);
-    this.routes : [
+    this.routes = [
             {
                 path : '/letter',
                 get : (req, res) => {
-                    var content = React.renderToString(WordFac({letters : [singleLetter]}));
+                    var content = React.renderToString(WordFac({
+                        letters : [singleLetter],
+                        wordComplete : false
+                    }));
                     res.render('index', {
                         content : content
-                    })
+                    });
                 }
             },
             {
@@ -31,7 +34,10 @@ module.exports = function Letters(io){
             {
                 path : '/word',
                 get : (req, res) => {
-                    res.send(template({'response' : lettersForWord.join(' ')}));
+                    var content = React.renderToString(WordFac({letters : lettersForWord}));
+                    res.render('index', {
+                        content : content
+                    })
                 }
             },
             {

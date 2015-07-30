@@ -25,6 +25,11 @@
     "socket.io": "^1.3.6"
   },
   "devDependencies": {
-    "nodemon": "^1.3.8"
+    "grunt": "^0.4.5",
+    "grunt-browserify": "^3.8.0",
+    "grunt-concurrent": "^2.0.1",
+    "grunt-nodemon": "^0.4.0",
+    "nodemon": "^1.3.8",
+    "reactify": "^1.1.1"
   }
 }
