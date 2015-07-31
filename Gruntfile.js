@@ -3,7 +3,7 @@ module.exports = function(grunt) {
         browserify : {
             dev : {
                 files : {
-                    'public/js/bundle.js' :[ 'public/**/*.jsx', 'app/common/events.js']
+                    'public/js/bundle.js' :[ 'public/**/*.jsx', 'app/common/events.js', 'public/js/app.jsx]
                 },
                 options : {
                     watch : true,

@@ -1,6 +1,6 @@
 'use strict';
 
-require('node-jsx').install();
+require('node-jsx').install({extension : '.jsx'});
 var express = require('express');
 var bodyParser = require('body-parser');
 var app = express();
@@ -13,18 +13,17 @@ var IO_EVENT = require('./common/events');
 io.on('connection', (socket) => {
     console.log('connected');
 });
-
+console.log(__dirname + '/../public');
 app.use(bodyParser.json());
-app.set('views', 'views');
-app.use(express.static(__dirname + 'public/js/bundle.js'));
+app.engine('jade', require('jade').__express);
+app.set('views', __dirname + '/views');
+app.set('view engine', 'jade');
+app.use(express.static(__dirname + '/../public'));
 
 for (let route of letterRoutes) {
    var ct = app.route(route.path);
-   console.log(ct);
    for(let verb in route) {
        if(verb !== 'path') {
-        console.log(verb);
-        console.log(route[verb]);
         ct[verb](route[verb]);
        }
    }

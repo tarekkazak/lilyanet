@@ -5,7 +5,7 @@ var _ = require('lodash'),
 
 module.exports = function Letters(io){
         var lettersForWord = [],
-        singleLetter = '';
+        singleLetter = 'A';
 
     var WordFac = React.createFactory(Word);
     this.routes = [
@@ -13,7 +13,7 @@ module.exports = function Letters(io){
                 path : '/letter',
                 get : (req, res) => {
                     var content = React.renderToString(WordFac({
-                        letters : [singleLetter],
+                        letters : [{id : 1, character : singleLetter}],
                         wordComplete : false
                     }));
                     res.render('index', {
