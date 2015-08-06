@@ -1,38 +1,36 @@
 var React  = require('react/addons');
 var _ = require('lodash');
+var imageService = require('../service/imageService.js');
+var images = (<div/>);
+var searchTerm = '';
 
 var ImageLoader = React.createClass({
-    render :  () => {
-        var results, imageSearch, images;
-        google.load('search', '1');
-        google.setOnLoadCallback(OnLoad);
+    componentDidMount : function() {
+        var self = this; 
 
-        function searchComplete() {
-            if (imageSearch.results && imageSearch.results.length ) {
-                // Grab our content div, clear it.
-                results = imageSearch.results;
-                this.forceUpdate();
-            }         
-        }
+        function serviceReady() {
+            imageService.search(searchTerm, searchComplete);
+        } 
+       
+        function searchComplete(results) {
+            console.log(results);
+            if(results && results.length) {
+                images = _.map(results, (item) =>{
+                    return (
+                            <img key={item.url}width="400" height="400" src={item.url} />
+                           );
+                });
 
-        function OnLoad() {
-                      
-            // Create an Image Search instance.
-            imageSearch = new google.search.ImageSearch();
-            imageSearch.setSearchCompleteCallback(this, searchComplete, null);
-            imageSearch.execute(this.props.word);
-            google.search.Search.getBranding('branding');
+                self.forceUpdate();
+            }
         }
-        
-        if(results.length > 0) {
-                // There is also a result.url property which has the escaped version
-            //newImg.src="/image-search/v1/result.tbUrl;"
-            images = _.map(results, (item) =>{
-                return (
-                        <img width="400" height="400" src={item.url} />
-                       );
-            });
+        if(!images.length) {
+            imageService.init(serviceReady);
         }
+    },
+    render : function() {
+        searchTerm = this.props.word;
+
         return (
                 <div>{images}</div>
                );

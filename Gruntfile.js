@@ -3,7 +3,7 @@ module.exports = function(grunt) {
         browserify : {
             dev : {
                 files : {
-                    'public/js/bundle.js' :[ 'public/**/*.jsx', 'app/common/events.js', 'public/js/app.jsx]
+                    'public/js/bundle.js' :[ 'public/js/app.jsx']
                 },
                 options : {
                     watch : true,
@@ -19,7 +19,7 @@ module.exports = function(grunt) {
             dev : {
                 script : 'app/server.js',
                 options : {
-                    ignore : ['public/**',  'node_modules/**', 'package.json', 'Gruntfile.js'],
+                    ignore : ['node_modules/**', 'package.json', 'Gruntfile.js'],
                     nodeArgs : ['--harmony']
                 }
             }

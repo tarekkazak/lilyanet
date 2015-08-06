@@ -2,22 +2,33 @@ var React = require('react/addons');
 var _ = require('lodash');
 var Letter = require('./letter.jsx');
 var ImageLoader = require('./imageLoader.jsx');
+var $ = require('jquery');
 
 var Word = React.createClass({
-    render : () => {
+    componentDidMount : function() {
         var self = this;
-        console.log(this.props.letters);
+        React.findDOMNode(self.refs.hInput).focus();
+    },
+    onInputChange :function(e) {
+        var value = e.target.value;
+        location.href = '/word?word=' + value;
+    },
+    render : function() {
+        var self = this;
+        var imageLoader;
         var word = '', letters = _.map(this.props.letters, function(item) {
-            if(self.props.wordComplete) {
-                word += item.character;
-            }
+            word += item.character;
+            console.log('id', item.id);
             return (
-                   <Letter key={item.id} character={item.character} color={item.color}  /> 
+                    <Letter key={item.id} character={item.character} color={item.color}  /> 
                 );
         });
+        
         return(
                 <div >
                     {letters}
+                <ImageLoader  word={word}/>
+                    <input onChange={this.onInputChange} type="text" ref="hInput" />
                 </div>
               );
     }
