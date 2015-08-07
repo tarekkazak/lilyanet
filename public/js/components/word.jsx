@@ -11,7 +11,7 @@ var Word = React.createClass({
     },
     onInputChange :function(e) {
         var value = e.target.value;
-        location.href = '/word?word=' + value;
+        location.href = '/letter?letter=' + value;
     },
     render : function() {
         var self = this;

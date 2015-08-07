@@ -4,7 +4,7 @@ function DataModel() {
     var self = this;
     this.letters = [];
     this.allowedWords = ['chat', 'vache', 'chien', 'zebre', 'hibou', 'elephant' , 'singe', 'lapin', 'tortue', 'cochon', 'cheval', 'canard', 'souris', 'elmo', 'tchoupi', 'lion', 'loup', 'mouton', 'oiseau'];
-
+    this.localImageLoader = 'http://192.168.1.5/images/';
     this.containsWord = function(word) {
         return self.allowedWords.indexOf(word.toLowerCase()) !== -1;
     }

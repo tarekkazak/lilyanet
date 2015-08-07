@@ -20,43 +20,23 @@ module.exports = function Letters(io){
             },
             {
                 path : '/letter',
-                get : (req, res) => {
-                    var content = React.renderToString(WordFac({
-                        letters : [{id : 1, character : req.query.character}],
-                        wordComplete : false
-                    }));
-                    res.render('index', {
-                        content : content,
-                        letters  : letters
-                    });
-                }
-            },
-            {
-                path : '/:letter',
-                post : (req, res) => {
-                    var letterData = req.body,
-                        letter = letterData.case === 'upper' ? letterData.character.toUpperCase() :  letterData.character;
-
-                    singleLetter = letter;
-                    io.emit(IO_EVENT.LETTER_UPDATED);
-                }
-            },
-            {
-                path : '/word',
                 get : [
                     (req, res, next) => {
                         model.validateWord();
                         next();
                 }, (req, res) => {
-                    model.letters.push(req.query.word);
+                    var lettersForWord,
+                        content;
+
+                    model.letters.push(req.query.letter);
                     console.log(req.query);
 
-                    var lettersForWord = _.map(model.letters, (item, index) => ({id:index, character:item}));
+                    lettersForWord = _.map(model.letters, (item, index) => ({id:index, character:item}));
 
-                    console.log('letters', model.letters);
-                    console.log('lfw', lettersForWord);
+                    //console.log('letters', model.letters);
+                    //console.log('lfw', lettersForWord);
 
-                    var content = React.renderToString(WordFac({letters : lettersForWord}));
+                    content = React.renderToString(WordFac({letters : lettersForWord}));
                     res.render('index', {
                         content : content,
                         word : model.letters.join('')
@@ -64,7 +44,7 @@ module.exports = function Letters(io){
                 }]
             },
             {
-                path: '/word/:letter',
+                path: '/letter/:letter',
                 post : (req, res) => {
                     var letterData = req.body,
                         letter = letterData.case === 'upper' ? letterData.character.toUpperCase() :  letterData.character;

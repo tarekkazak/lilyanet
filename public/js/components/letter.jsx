@@ -6,7 +6,7 @@ var Letter = React.createClass({
             color : this.props.color,
             marginRight : '6px',
             display : 'inline-block',
-            fontSize : '10em',
+            fontSize : '7.5em',
             fontWeight : 'bold'
         };
         return (

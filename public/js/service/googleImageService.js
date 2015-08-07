@@ -1,6 +1,9 @@
 var model = require('../model/dataModel.js');
 
-module.exports = (function() {
+function GoogleImageLoader() {
+        var imageSearch,
+        initCallback,
+        searchCompleteCallback;
 
     function OnLoad() {
         // Create an Image Search instance.
@@ -12,7 +15,7 @@ module.exports = (function() {
         searchCompleteCallback(imageSearch.results);
     }
 
-    function search(searchTerm, searchCallback) {
+    this.search = function(searchTerm, searchCallback) {
         searchCompleteCallback = searchCallback;
 
         imageSearch.setSearchCompleteCallback(this, searchComplete, null);
@@ -24,22 +27,16 @@ module.exports = (function() {
         
     }
 
-    function init(callback) {
+    this.init = function(callback) {
         initCallback = callback;
-        if(root.google) {
-            root.google.load('search', '1', {language:'fr'});
-            root.google.setOnLoadCallback(OnLoad);
+       
+        if(google) {
+            google.load('search', '1', {language:'fr'});
+            google.setOnLoadCallback(OnLoad);
         }
     }
 
-    var root = this,
-        imageSearch,
-        initCallback,
-        searchCompleteCallback, 
-        service = {
-            init : init,
-            search : search
-        };
 
-    return service;
-})();
+}
+
+module.exports = new GoogleImageLoader();

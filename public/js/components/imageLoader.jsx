@@ -1,6 +1,6 @@
 var React  = require('react/addons');
 var _ = require('lodash');
-var imageService = require('../service/imageService.js');
+var imageService = require('../service/googleImageService.js');
 var images = (<div/>);
 var searchTerm = '';
 
@@ -17,7 +17,7 @@ var ImageLoader = React.createClass({
             if(results && results.length) {
                 images = _.map(results, (item) =>{
                     return (
-                            <img key={item.url}width="400" height="400" src={item.url} />
+                            <img key={item.url}width="300" height="300" src={item.url} />
                            );
                 });
 
