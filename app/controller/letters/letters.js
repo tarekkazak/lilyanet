@@ -36,7 +36,10 @@ module.exports = function Letters(io){
                     //console.log('letters', model.letters);
                     //console.log('lfw', lettersForWord);
 
-                    content = React.renderToString(WordFac({letters : lettersForWord}));
+                    content = React.renderToString(WordFac({
+                        letters : lettersForWord,
+                        words : model.allowedWords
+                    }));
                     res.render('index', {
                         content : content,
                         word : model.letters.join('')

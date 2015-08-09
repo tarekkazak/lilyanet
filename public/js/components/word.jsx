@@ -23,12 +23,19 @@ var Word = React.createClass({
                     <Letter key={item.id} character={item.character} color={item.color}  /> 
                 );
         });
+
+        var words = _.map(this.props.allowedWords, (item) => (<li>{item}</li>));
         
         return(
-                <div >
-                    {letters}
-                <ImageLoader  word={word}/>
-                    <input onChange={this.onInputChange} type="text" ref="hInput" />
+                <div>
+                    <div style={float:'left'} >
+                        {letters}
+                        <ImageLoader  word={word}/>
+                        <input onChange={this.onInputChange} type="text" ref="hInput" />
+                    </div>
+                    <div style={float:'left'} >
+                        <ul>{words}</ul>
+                    </div>
                 </div>
               );
     }

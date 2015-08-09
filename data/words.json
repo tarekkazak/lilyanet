@@ -1,0 +1,131 @@
+{
+    "words" : [
+        {
+            "word" : "mama",
+            "location" : "local"
+        },
+        {
+            "word" : "lilya",
+            "location" : "local"
+        },
+        {
+            "word" : "daddy",
+            "location" : "local"
+        },
+        {
+            "word" : "chat",
+            "location" : "remote"
+        },
+        {
+            "word" : "chien",
+            "location" : "remote"
+        },
+        {
+            "word" : "cheval",
+            "location" : "remote"
+        },
+        {
+            "word" : "elephant",
+            "location" : "remote"
+        },
+        {
+            "word" : "poule",
+            "location" : "remote"
+        },
+        {
+            "word" : "coq",
+            "location" : "remote"
+        },
+        {
+            "word" : "zebre",
+            "location" : "remote"
+        },
+        {
+            "word" : "vache",
+            "location" : "remote"
+        },
+        {
+            "word" : "hibou",
+            "location" : "remote"
+        },
+        {
+            "word" : "singe",
+            "location" : "remote"
+        },
+        {
+            "word" : "lapin",
+            "location" : "remote"
+        },
+        {
+            "word" : "tortue",
+            "location" : "remote"
+        },
+        {
+            "word" : "cochon",
+            "location" : "remote"
+        },
+        {
+            "word" : "canard",
+            "location" : "remote"
+        },
+        {
+            "word" : "souris",
+            "location" : "remote"
+        },
+        {
+            "word" : "elmo",
+            "location" : "remote"
+        },
+        {
+            "word" : "tchoupi",
+            "location" : "remote"
+        },
+        {
+            "word" : "lion",
+            "location" : "remote"
+        },
+        {
+            "word" : "loup",
+            "location" : "remote"
+        },
+        {
+            "word" : "mouton",
+            "location" : "remote"
+        },
+        {
+            "word" : "oiseau",
+            "location" : "remote"
+        },
+        {
+            "word" : "ours",
+            "location" : "remote"
+        },
+        {
+            "word" : "triangle",
+            "searchTerm" : "dessin triangle",
+            "location" : "remote"
+        },
+        {
+            "word" : "carre",
+            "searchTerm" : "dessin carre",
+            "location" : "remote"
+        },
+        {
+            "word" : "rond",
+            "searchTerm" : "dessin rond",
+            "location" : "remote"
+        },
+        {
+            "word" : "bebe",
+            "location" : "remote"
+        },
+        {
+            "word" : "pomme",
+            "location" : "remote"
+        },
+        {
+            "word" : "banane",
+            "location" : "remote"
+        }
+    ]
+}

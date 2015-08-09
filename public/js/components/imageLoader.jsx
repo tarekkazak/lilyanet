@@ -1,10 +1,14 @@
 var React  = require('react/addons');
 var _ = require('lodash');
-var imageService = require('../service/googleImageService.js');
+var imageServiceProvider = require('../service/imageServiceProvider.js');
+var imageService;
 var images = (<div/>);
 var searchTerm = '';
 
 var ImageLoader = React.createClass({
+    componentWillMount : function() {
+        imageService = imageServiceProvider.get(this.props.local);
+    },
     componentDidMount : function() {
         var self = this; 
 

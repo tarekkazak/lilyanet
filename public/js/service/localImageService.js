@@ -1,6 +1,6 @@
 var model = require('../model/dataModel.js');
 
-function LocalImageLoader() {
+function LocalImageService() {
 
     this.search = function(searchTerm, searchCallback) {
 
@@ -29,4 +29,4 @@ function LocalImageLoader() {
 
 }
 
-module.exports = new LocalImageLoader();
+module.exports = new LocalImageService();

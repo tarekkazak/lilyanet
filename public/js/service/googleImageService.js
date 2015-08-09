@@ -1,6 +1,6 @@
 var model = require('../model/dataModel.js');
 
-function GoogleImageLoader() {
+function GoogleImageService() {
         var imageSearch,
         initCallback,
         searchCompleteCallback;
@@ -39,4 +39,4 @@ function GoogleImageLoader() {
 
 }
 
-module.exports = new GoogleImageLoader();
+module.exports = new GoogleImageService();
