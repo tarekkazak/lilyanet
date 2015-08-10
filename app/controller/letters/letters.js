@@ -47,7 +47,8 @@ module.exports = function Letters(io){
 
                     res.render('index', {
                         content : content,
-                        word : model.letters.join('')
+                        word : model.letters.join(''),
+                        isLocalResource : model.isResourceLocal()
                     });
                 }]
             },

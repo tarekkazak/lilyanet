@@ -5,9 +5,18 @@ var ImageLoader = require('./imageLoader.jsx');
 var $ = require('jquery');
 
 var Word = React.createClass({
+    getInitialState : function() {
+        return {letters : this.props.letters};
+    },
     componentDidMount : function() {
-        var self = this;
+        var self = this,
+            index = 0;
         React.findDOMNode(self.refs.hInput).focus();
+        /*setInterval(() => {
+            self.state.letters = self.props.words[index].split('');
+            index++;
+            self.forceUpdate();
+        }, 10000);*/
     },
     onInputChange :function(e) {
         var value = e.target.value;
@@ -24,16 +33,16 @@ var Word = React.createClass({
                 );
         });
 
-        var words = _.map(this.props.allowedWords, (item) => (<li>{item}</li>));
+        var words = _.map(this.props.words, (item) => (<li>{item}</li>));
         
         return(
                 <div>
-                    <div style={float:'left'} >
+                    <div style={{ float:"left" }} >
                         {letters}
                         <ImageLoader local={this.props.isLocalResource} word={word}/>
                         <input onChange={this.onInputChange} type="text" ref="hInput" />
                     </div>
-                    <div style={float:'left'} >
+                    <div style={{ float:"right" }} >
                         <ul>{words}</ul>
                     </div>
                 </div>

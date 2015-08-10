@@ -1,17 +1,22 @@
 'use strict';
 
-var _ require('lodash');
-
 function DataModel() {
+
     var self = this;
-    var data = new Map(JSON.parse('../../../data/words.json').words);
-    console.log(data.entries());
+    var data = require('../../../data/words.json');
+    var dataMap = new Map();
+    self.allowedWords = [];
+
+    for(let d in data.words) {
+        dataMap.set(d, data.words[d]);
+        self.allowedWords.push(d);
+    }
+
     this.letters = [];
     this.localImageUrl = '/images/';
-    this.allowedWords = data.values();
 
-    function contains(word) {
-        return data.has(word);
+    this.containsWord = function(word) {
+        return dataMap.has(word);
     }
 
     this.resetWord = function() {
@@ -19,8 +24,8 @@ function DataModel() {
     }
 
     this.isResourceLocal = function() {
-        var wordData = data.get(this.letters.join(''));
-        return wordData.location === 'local';
+        var wordData = dataMap.get(this.letters.join(''));
+        return wordData ? wordData.location === 'local' : false;
     }
     
     function wordIsValid(word) {
@@ -31,13 +36,16 @@ function DataModel() {
            }
        }
        return valid;
-    };
-
-    this.wordComplete = function(){
-        var word = self.letters.join('');
-        return containsWord(word) || !wordIsValid(word);
     }
 
+    this.wordComplete = function(){
+        if(self.letters.length < 1) {
+            return;
+        }
+        var word = self.letters.join('');
+        return this.containsWord(word) || !wordIsValid(word);
+    }
 
+}
 
 module.exports =  new DataModel();
