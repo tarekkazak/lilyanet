@@ -30,7 +30,7 @@ var Word = React.createClass({
                 <div>
                     <div style={float:'left'} >
                         {letters}
-                        <ImageLoader  word={word}/>
+                        <ImageLoader local={this.props.isLocalResource} word={word}/>
                         <input onChange={this.onInputChange} type="text" ref="hInput" />
                     </div>
                     <div style={float:'left'} >

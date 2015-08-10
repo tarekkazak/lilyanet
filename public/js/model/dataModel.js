@@ -4,16 +4,23 @@ var _ require('lodash');
 
 function DataModel() {
     var self = this;
-    var data = JSON.parse('../../../data/words.json');
+    var data = new Map(JSON.parse('../../../data/words.json').words);
+    console.log(data.entries());
     this.letters = [];
     this.localImageUrl = '/images/';
-    this.allowedWords = _.pluck(data.words, 'word');
-    this.containsWord = function(word) {
-        return self.allowedWords.indexOf(word.toLowerCase()) !== -1;
+    this.allowedWords = data.values();
+
+    function contains(word) {
+        return data.has(word);
     }
 
-    function resetWord() {
+    this.resetWord = function() {
         self.letters = [];
+    }
+
+    this.isResourceLocal = function() {
+        var wordData = data.get(this.letters.join(''));
+        return wordData.location === 'local';
     }
     
     function wordIsValid(word) {
@@ -26,14 +33,10 @@ function DataModel() {
        return valid;
     };
 
-    this.validateWord = function(){
+    this.wordComplete = function(){
         var word = self.letters.join('');
-        if(self.containsWord(word) || !wordIsValid(word)) {
-            resetWord();
-        }
-    };
-    
-}
+        return containsWord(word) || !wordIsValid(word);
+    }
 
 
 

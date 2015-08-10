@@ -1,131 +1,100 @@
 {
-    "words" : [
-        {
-            "word" : "mama",
+    "words" : {
+        "mama" : {
             "location" : "local"
         },
-        {
-            "word" : "lilya",
+        "lilya" : {
             "location" : "local"
         },
-        {
-            "word" : "daddy",
+        "daddy" : {
             "location" : "local"
         },
-        {
-            "word" : "chat",
+        "chat" : {
             "location" : "remote"
         },
-        {
-            "word" : "chien",
+        "chien" : {
             "location" : "remote"
         },
-        {
-            "word" : "cheval",
+        "cheval" : {
             "location" : "remote"
         },
-        {
-            "word" : "elephant",
+        "elephant" : {
             "location" : "remote"
         },
-        {
-            "word" : "poule",
+        "poule" : {
             "location" : "remote"
         },
-        {
-            "word" : "coq",
+        "coq" : {
             "location" : "remote"
         },
-        {
-            "word" : "zebre",
+        "zebre" : {
             "location" : "remote"
         },
-        {
-            "word" : "vache",
+        "vache" : {
             "location" : "remote"
         },
-        {
-            "word" : "hibou",
+        "hibou" : {
             "location" : "remote"
         },
-        {
-            "word" : "singe",
+        "singe" : {
             "location" : "remote"
         },
-        {
-            "word" : "lapin",
+        "lapin": {
             "location" : "remote"
         },
-        {
-            "word" : "tortue",
+        "tortue" : {
             "location" : "remote"
         },
-        {
-            "word" : "cochon",
+        "cochon" : {
             "location" : "remote"
         },
-        {
-            "word" : "canard",
+        "canard" : {
             "location" : "remote"
         },
-        {
-            "word" : "souris",
+        "souris" : {
             "location" : "remote"
         },
-        {
-            "word" : "elmo",
+        "elmo": {
             "location" : "remote"
         },
-        {
-            "word" : "tchoupi",
+        "tchoupi" : {
             "location" : "remote"
         },
-        {
-            "word" : "lion",
+        "lion" : {
             "location" : "remote"
         },
-        {
-            "word" : "loup",
+        "loup" : {
             "location" : "remote"
         },
-        {
-            "word" : "mouton",
+        "mouton" : {
             "location" : "remote"
         },
-        {
-            "word" : "oiseau",
+        "oiseau" : {
             "location" : "remote"
         },
-        {
-            "word" : "ours",
+        "ours" : {
             "location" : "remote"
         },
-        {
-            "word" : "triangle",
+        "triangle" : {
             "searchTerm" : "dessin triangle",
             "location" : "remote"
         },
-        {
-            "word" : "carre",
+        "carre": {
             "searchTerm" : "dessin carre",
             "location" : "remote"
         },
-        {
-            "word" : "rond",
+        "rond": {
             "searchTerm" : "dessin rond",
             "location" : "remote"
         },
-        {
-            "word" : "bebe",
+        "bebe" : {
             "location" : "remote"
         },
-        {
-            "word" : "pomme",
+        "pomme" : {
             "location" : "remote"
         },
-        {
-            "word" : "banane",
+        "banane" : {
             "location" : "remote"
         }
-    ]
+    }
 }

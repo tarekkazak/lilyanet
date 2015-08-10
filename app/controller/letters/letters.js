@@ -22,7 +22,10 @@ module.exports = function Letters(io){
                 path : '/letter',
                 get : [
                     (req, res, next) => {
-                        model.validateWord();
+                        //before processing next request, check if word is already complete
+                        if(model.wordComplete()) {
+                            model.resetWord();
+                        }
                         next();
                 }, (req, res) => {
                     var lettersForWord,
@@ -38,8 +41,10 @@ module.exports = function Letters(io){
 
                     content = React.renderToString(WordFac({
                         letters : lettersForWord,
-                        words : model.allowedWords
+                        words : model.allowedWords,
+                        isLocalResource : model.isResourceLocal()
                     }));
+
                     res.render('index', {
                         content : content,
                         word : model.letters.join('')
