@@ -12,11 +12,12 @@ var Word = React.createClass({
         var self = this,
             index = 0;
         React.findDOMNode(self.refs.hInput).focus();
-        /*setInterval(() => {
-            self.state.letters = self.props.words[index].split('');
+        setInterval(() => {
+            self.setState({
+                letters : self.props.words[index].split('')
+            });
             index++;
-            self.forceUpdate();
-        }, 10000);*/
+        }, 5000);
     },
     onInputChange :function(e) {
         var value = e.target.value;
@@ -25,16 +26,16 @@ var Word = React.createClass({
     render : function() {
         var self = this;
         var imageLoader;
-        var word = '', letters = _.map(this.props.letters, function(item) {
+        var word = '', letters = _.map(this.state.letters, function(item) {
             word += item.character;
-            console.log('id', item.id);
+
             return (
                     <Letter key={item.id} character={item.character} color={item.color}  /> 
                 );
         });
 
-        var words = _.map(this.props.words, (item) => (<li>{item}</li>));
-        
+        var words = _.map(this.props.words, (item, index) => (<li style={{fontSize : '20px'}} key={index}>{item}</li>));
+
         return(
                 <div>
                     <div style={{ float:"left" }} >
@@ -42,7 +43,7 @@ var Word = React.createClass({
                         <ImageLoader local={this.props.isLocalResource} word={word}/>
                         <input onChange={this.onInputChange} type="text" ref="hInput" />
                     </div>
-                    <div style={{ float:"right" }} >
+                    <div style={{ float:"right", height : '400px', overflowY : 'auto', overflowX : 'hidden', width : '350px' }} >
                         <ul>{words}</ul>
                     </div>
                 </div>

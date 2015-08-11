@@ -16,18 +16,26 @@ function DataModel() {
     this.localImageUrl = '/images/';
 
     this.containsWord = function(word) {
+        word = word.toLowerCase();
         return dataMap.has(word);
-    }
+    };
 
     this.resetWord = function() {
         self.letters = [];
-    }
+    };
 
     this.isResourceLocal = function() {
-        var wordData = dataMap.get(this.letters.join(''));
+        var word = this.letters.join('').toLowerCase();
+        var wordData = dataMap.get(word);
         return wordData ? wordData.location === 'local' : false;
-    }
-    
+    };
+
+    this.getSearchTerm = function(word) {
+        word = word.toLowerCase();
+        var wordData = dataMap.get(word);
+        return wordData.searchTerm ? wordData.searchTerm : word;
+    };
+
     function wordIsValid(word) {
        var valid = false;
        for(let w of self.allowedWords) {
@@ -42,9 +50,9 @@ function DataModel() {
         if(self.letters.length < 1) {
             return;
         }
-        var word = self.letters.join('');
+        var word = self.letters.join('').toLowerCase();
         return this.containsWord(word) || !wordIsValid(word);
-    }
+    };
 
 }
 

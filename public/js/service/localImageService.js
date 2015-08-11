@@ -7,6 +7,8 @@ function LocalImageService() {
             return;
         }
 
+        searchTerm = searchTerm.toLowerCase();
+
         var results = [
             {
                 url : model.localImageUrl + searchTerm + '/1.jpg'

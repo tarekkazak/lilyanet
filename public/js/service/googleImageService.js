@@ -20,9 +20,8 @@ function GoogleImageService() {
 
         imageSearch.setSearchCompleteCallback(this, searchComplete, null);
         
-        console.log('search term', searchTerm);
         if(model.containsWord(searchTerm)) {
-            imageSearch.execute(searchTerm);
+            imageSearch.execute(model.getSearchTerm(searchTerm));
         }
         
     }

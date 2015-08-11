@@ -6,7 +6,7 @@ html
         script(src="https://www.google.com/jsapi")
         script.
             var word = "#{word}";
-            var isLocalResource = "#{isLocalResource}";
+            var isLocalResource = "#{isLocalResource}" === 'true';
             console.log(isLocalResource);
             var letters = word.split('').map(function(item, index){
                 return {

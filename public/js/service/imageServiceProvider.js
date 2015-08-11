@@ -4,10 +4,8 @@ function ImageServiceProvider () {
 
     this.get = function(local) {
         if(local) {
-            console.log('local');
             return localImageService;
         } else {
-            console.log('remote');
             return googleImageService;
         }
     };
