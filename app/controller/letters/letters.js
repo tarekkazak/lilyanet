@@ -11,10 +11,15 @@ module.exports = function Letters(io){
                 path : '/',
                 get : (req, res) => {
                     var content = React.renderToString(WordFac({
-                        letters : model.letters
+                        letters : model.letters,
+                        words : model.allowedWords,
+                        isLocalResource : false
                     }));
+
                     res.render('index', {
-                        content : content
+                        content : content,
+                        word : '',
+                        isLocalResource : false
                     })
                 }
             },
