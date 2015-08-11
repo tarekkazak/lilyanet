@@ -12,12 +12,12 @@ var Word = React.createClass({
         var self = this,
             index = 0;
         React.findDOMNode(self.refs.hInput).focus();
-        setInterval(() => {
+        /*setInterval(() => {
             self.setState({
                 letters : self.props.words[index].split('')
             });
             index++;
-        }, 5000);
+        }, 5000);*/
     },
     onInputChange :function(e) {
         var value = e.target.value;
