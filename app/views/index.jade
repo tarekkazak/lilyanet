@@ -8,12 +8,7 @@ html
             var word = "#{word}";
             var isLocalResource = "#{isLocalResource}" === 'true';
             console.log(isLocalResource);
-            var letters = word.split('').map(function(item, index){
-                return {
-                    id : index,
-                    character : item
-                };
-            });
+            var letters = word.split('');
     body
         div(id="container")!= content    
         script(src="/js/bundle.js")

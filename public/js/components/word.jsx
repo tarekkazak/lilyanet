@@ -6,18 +6,14 @@ var $ = require('jquery');
 
 var Word = React.createClass({
     getInitialState : function() {
-        return {letters : this.props.letters};
+        return {
+            letters : this.props.letters,
+            words : this.props.words,
+            isLocalResource : this.props.isLocalResource
+        };
     },
     componentDidMount : function() {
-        var self = this,
-            index = 0;
-        React.findDOMNode(self.refs.hInput).focus();
-        /*setInterval(() => {
-            self.setState({
-                letters : self.props.words[index].split('')
-            });
-            index++;
-        }, 5000);*/
+        React.findDOMNode(this.refs.hInput).focus();
     },
     onInputChange :function(e) {
         var value = e.target.value;
@@ -25,26 +21,29 @@ var Word = React.createClass({
     },
     render : function() {
         var self = this;
+        var lettersForWord = _.map(this.state.letters, (item, index) => ({id:index, character:item}));
         var imageLoader;
-        var word = '', letters = _.map(this.state.letters, function(item) {
+        var word = '', letters = _.map(lettersForWord, function(item) {
             word += item.character;
 
             return (
-                    <Letter key={item.id} character={item.character} color={item.color}  /> 
+                    <Letter key={item.id} data={item} character={item.character}  /> 
                 );
         });
 
-        var words = _.map(this.props.words, (item, index) => (<li style={{fontSize : '20px'}} key={index}>{item}</li>));
+        console.log('word', word);
+
+        var words = _.map(this.state.words, (item, index) => (<li style={{marginRight : '6px', display : 'inline-block', fontSize : '20px'}} key={index}>{item}</li>));
 
         return(
                 <div>
-                    <div style={{ float:"left" }} >
-                        {letters}
-                        <ImageLoader local={this.props.isLocalResource} word={word}/>
-                        <input onChange={this.onInputChange} type="text" ref="hInput" />
-                    </div>
-                    <div style={{ float:"right", height : '400px', overflowY : 'auto', overflowX : 'hidden', width : '350px' }} >
+                    <div>
                         <ul>{words}</ul>
+                    </div>
+                    <div>
+                        {letters}
+                        <ImageLoader local={this.state.isLocalResource} word={word} />
+                        <input onChange={this.onInputChange} type="text" ref="hInput" />
                     </div>
                 </div>
               );

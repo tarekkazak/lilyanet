@@ -33,23 +33,18 @@ module.exports = function Letters(io){
                         }
                         next();
                 }, (req, res) => {
-                    var lettersForWord,
-                        content,
+                    var content,
                         isLocalResource = false;
                     model.letters.push(req.query.letter);
 
                     console.log(req.query);
                     
                     isLocalResource = model.isResourceLocal();
-
-                    lettersForWord = _.map(model.letters, (item, index) => ({id:index, character:item}));
-
                     //console.log('letters', model.letters);
-                    //console.log('lfw', lettersForWord);
                     console.log('is local resource', isLocalResource);
 
                     content = React.renderToString(WordFac({
-                        letters : lettersForWord,
+                        letters : model.letters,
                         words : model.allowedWords,
                         isLocalResource : isLocalResource
                     }));

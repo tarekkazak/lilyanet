@@ -6,10 +6,8 @@ var images = (<div/>);
 var searchTerm = '';
 
 var ImageLoader = React.createClass({
-    componentWillMount : function() {
+    componentDidUpdate : function() {
         imageService = imageServiceProvider.get(this.props.local);
-    },
-    componentDidMount : function() {
         var self = this; 
 
         function serviceReady() {
@@ -28,12 +26,13 @@ var ImageLoader = React.createClass({
                 self.forceUpdate();
             }
         }
-        if(!images.length) {
+            
+        if(searchTerm !== this.props.word){
+            searchTerm = this.props.word; 
             imageService.init(serviceReady);
         }
     },
     render : function() {
-        searchTerm = this.props.word;
 
         return (
                 <div>{images}</div>
