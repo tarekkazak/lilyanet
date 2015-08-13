@@ -1,40 +1,46 @@
 var model = require('../model/dataModel.js');
 
 function GoogleImageService() {
-        var imageSearch,
-        initCallback,
-        searchCompleteCallback;
 
-    function OnLoad() {
-        // Create an Image Search instance.
-        imageSearch = new google.search.ImageSearch();
-        initCallback();
-    }
-
-    function searchComplete() {
-        searchCompleteCallback(imageSearch.results);
-    }
-
-    this.search = function(searchTerm, searchCallback) {
-        searchCompleteCallback = searchCallback;
-
-        imageSearch.setSearchCompleteCallback(this, searchComplete, null);
+    var promise = new Promise((resolve, reject) => {
         
-        if(model.containsWord(searchTerm)) {
-            imageSearch.execute(model.getSearchTerm(searchTerm));
+        function OnLoad() {
+            // Create an Image Search instance.
+            var imageSearch = new google.search.ImageSearch();
+            resolve(imageSearch);
         }
         
-    }
-
-    this.init = function(callback) {
-        initCallback = callback;
-       
         if(google) {
             google.load('search', '1', {language:'fr'});
             google.setOnLoadCallback(OnLoad);
         }
-    }
+    });
 
+
+
+
+    this.search = function(searchTerm) {
+        var self = this;
+
+        return promise.then((imageSearch) => {
+            var resultPromise = new Promise((resolve, reject) => {
+                function searchComplete() {
+                    resolve(imageSearch.results);
+                }
+
+                imageSearch.setSearchCompleteCallback(self, searchComplete, null);
+                
+                if(model.containsWord(searchTerm)) {
+                    imageSearch.execute(model.getSearchTerm(searchTerm));
+                }
+                
+            });
+
+
+            return resultPromise;
+        });
+
+    };
 
 }
 

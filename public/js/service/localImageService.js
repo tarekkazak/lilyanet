@@ -2,7 +2,7 @@ var model = require('../model/dataModel.js');
 
 function LocalImageService() {
 
-    this.search = function(searchTerm, searchCallback) {
+    this.search = function(searchTerm) {
         if(!model.containsWord(searchTerm)) {
             return;
         }
@@ -24,13 +24,8 @@ function LocalImageService() {
             }
         ]; 
         console.log('search term', searchTerm);
-        searchCallback(results);
+        return Promise.resolve(results);
     }
-
-    this.init = function(callback) {
-      callback(); 
-    }
-
 
 }
 

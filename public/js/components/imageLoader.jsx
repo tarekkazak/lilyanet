@@ -10,9 +10,6 @@ var ImageLoader = React.createClass({
         imageService = imageServiceProvider.get(this.props.local);
         var self = this; 
 
-        function serviceReady() {
-            imageService.search(searchTerm, searchComplete);
-        } 
        
         function searchComplete(results) {
             console.log(results);
@@ -29,7 +26,7 @@ var ImageLoader = React.createClass({
             
         if(searchTerm !== this.props.word){
             searchTerm = this.props.word; 
-            imageService.init(serviceReady);
+            imageService.search(searchTerm).then(searchComplete);
         }
     },
     render : function() {
