@@ -15,6 +15,9 @@ function initView() {
         isLocalResource : model.isResourceLocal()
     });
     index++;
+    if(index === model.allowedWords.length) {
+        index = 0;
+    }
 }
 
 setInterval(initView, 10000);
