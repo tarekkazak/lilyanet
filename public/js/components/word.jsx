@@ -2,7 +2,6 @@ var React = require('react/addons');
 var _ = require('lodash');
 var Letter = require('./letter.jsx');
 var ImageLoader = require('./imageLoader.jsx');
-var $ = require('jquery');
 
 var Word = React.createClass({
     getInitialState : function() {
