@@ -10,38 +10,56 @@ module.exports = function Letters(io){
     var WordFac = React.createFactory(Word);
     this.routes = [
             {
-                path : '/letter',
+                path : '/',
                 get : (req, res) => {
                     var content = React.renderToString(WordFac({
-                        letters : [{id : 1, character : singleLetter}],
-                        wordComplete : false
+                        letters : model.letters,
+                        words : model.allowedWords,
+                        isLocalResource : false
                     }));
-                    res.render('index', {
-                        content : content
-                    });
-                }
-            },
-            {
-                path : '/:letter',
-                post : (req, res) => {
-                    var letterData = req.body,
-                        letter = letterData.case === 'upper' ? letterData.character.toUpperCase() :  letterData.character;
 
-                    singleLetter = letter;
-                    io.emit(IO_EVENT.LETTER_UPDATED);
-                }
-            },
-            {
-                path : '/word',
-                get : (req, res) => {
-                    var content = React.renderToString(WordFac({letters : lettersForWord}));
                     res.render('index', {
-                        content : content
+                        content : content,
+                        word : '',
+                        isLocalResource : false
                     })
                 }
             },
             {
-                path: '/word/:letter',
+                path : '/letter',
+                get : [
+                    (req, res, next) => {
+                        //before processing next request, check if word is already complete
+                        if(model.wordComplete()) {
+                            model.resetWord();
+                        }
+                        next();
+                }, (req, res) => {
+                    var content,
+                        isLocalResource = false;
+                    model.letters.push(req.query.letter);
+
+                    console.log(req.query);
+                    
+                    isLocalResource = model.isResourceLocal();
+                    //console.log('letters', model.letters);
+                    console.log('is local resource', isLocalResource);
+
+                    content = React.renderToString(WordFac({
+                        letters : model.letters,
+                        words : model.allowedWords,
+                        isLocalResource : isLocalResource
+                    }));
+
+                    res.render('index', {
+                        content : content,
+                        word : model.letters.join(''),
+                        isLocalResource : isLocalResource
+                    });
+                }]
+            },
+            {
+                path: '/letter/:letter',
                 post : (req, res) => {
                     var letterData = req.body,
                         letter = letterData.case === 'upper' ? letterData.character.toUpperCase() :  letterData.character;

@@ -1,18 +1,41 @@
 'use strict';
 
 function DataModel() {
+
     var self = this;
+    var data = require('../../../data/words.json');
+    var dataMap = new Map();
+    self.allowedWords = [];
+
+    for(let d in data.words) {
+        dataMap.set(d, data.words[d]);
+        self.allowedWords.push(d);
+    }
+
     this.letters = [];
-    this.allowedWords = ['chat', 'vache', 'chien', 'zebre', 'hibou', 'elephant' , 'singe', 'lapin', 'tortue', 'cochon', 'cheval', 'canard', 'souris', 'elmo', 'tchoupi', 'lion', 'loup', 'mouton', 'oiseau', 'ours', 'triangle', 'carre', 'rond', 'coq', 'poule', 'bebe', 'pomme', 'banane', 'grenouille', 'poisson', 'fraise'];
+    this.localImageUrl = '/images/';
 
     this.containsWord = function(word) {
-        return self.allowedWords.indexOf(word.toLowerCase()) !== -1;
-    }
+        word = word.toLowerCase();
+        return dataMap.has(word);
+    };
 
-    function resetWord() {
+    this.resetWord = function() {
         self.letters = [];
-    }
-    
+    };
+
+    this.isResourceLocal = function() {
+        var word = this.letters.join('').toLowerCase();
+        var wordData = dataMap.get(word);
+        return wordData ? wordData.location === 'local' : false;
+    };
+
+    this.getSearchTerm = function(word) {
+        word = word.toLowerCase();
+        var wordData = dataMap.get(word);
+        return wordData.searchTerm ? wordData.searchTerm : word;
+    };
+
     function wordIsValid(word) {
        var valid = false;
        for(let w of self.allowedWords) {
@@ -21,17 +44,16 @@ function DataModel() {
            }
        }
        return valid;
-    };
+    }
 
-    this.validateWord = function(){
-        var word = self.letters.join('');
-        if(self.containsWord(word) || !wordIsValid(word)) {
-            resetWord();
+    this.wordComplete = function(){
+        if(self.letters.length < 1) {
+            return;
         }
+        var word = self.letters.join('').toLowerCase();
+        return this.containsWord(word) || !wordIsValid(word);
     };
-    
+
 }
-
-
 
 module.exports =  new DataModel();
