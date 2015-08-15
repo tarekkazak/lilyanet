@@ -29,6 +29,6 @@ for (let route of letterRoutes) {
    }
 }
 io.listen(3300);
-app.listen(5500, function() {
-    console.log('running on 5500');   
+app.listen(2200, function() {
+    console.log('running on 2200');   
 });

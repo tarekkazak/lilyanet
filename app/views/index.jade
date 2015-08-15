@@ -4,14 +4,6 @@ html
         meta(charset="UTF-8")
         title
         script(src="https://www.google.com/jsapi")
-        script.
-            var word = "#{word}";
-            var letters = word.split('').map(function(item, index){
-                return {
-                    id : index,
-                    character : item
-                };
-            });
     body
-        div(id="container")!= content    
+        div(id="ctt")!= content    
         script(src="/js/bundle.js")
