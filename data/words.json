@@ -21,6 +21,9 @@
         "elephant" : {
             "location" : "remote"
         },
+        "penguin" : {
+            "location" : "remote"
+        },
         "poule" : {
             "location" : "remote"
         },
@@ -51,7 +54,18 @@
         "canard" : {
             "location" : "remote"
         },
+        "ecureuil" : {
+            "location" : "remote"
+        },
         "souris" : {
+            "location" : "remote"
+        },
+        "doudou": {
+            "searchTerm" : "doudou tchoupi",
+            "location" : "remote"
+        },
+        "lalou": {
+            "searchTerm" : "lalou tchoupi",
             "location" : "remote"
         },
         "elmo": {
@@ -61,6 +75,9 @@
             "location" : "remote"
         },
         "lion" : {
+            "location" : "remote"
+        },
+        "panda" : {
             "location" : "remote"
         },
         "loup" : {
@@ -75,16 +92,24 @@
         "ours" : {
             "location" : "remote"
         },
+        "coeur" : {
+            "searchTerm" : "dessin coeur",
+            "location" : "remote"
+        },
+        "etoile" : {
+            "searchTerm" : "etoile dessin",
+            "location" : "remote"
+        },
         "triangle" : {
-            "searchTerm" : "dessin triangle",
+            "searchTerm" : "triangle dessin",
             "location" : "remote"
         },
         "carre": {
-            "searchTerm" : "dessin carre",
+            "searchTerm" : "carre dessin",
             "location" : "remote"
         },
         "rond": {
-            "searchTerm" : "dessin rond",
+            "searchTerm" : "rond dessin",
             "location" : "remote"
         },
         "bebe" : {
