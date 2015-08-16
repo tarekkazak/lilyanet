@@ -1,11 +1,10 @@
 var _ = require('lodash'),
     IO_EVENT = require('../../common/events'),
     React = require('react/addons'),
-    Word = require('../../../public/js/components/word.jsx');
+    Word = require('../../../public/js/components/word.jsx'),
+    model = require('../../../public/js/model/dataModel.js');
 
 module.exports = function Letters(io){
-        var lettersForWord = [],
-        singleLetter = 'A';
 
     var WordFac = React.createFactory(Word);
     this.routes = [

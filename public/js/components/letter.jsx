@@ -1,7 +1,7 @@
 var React = require('react/addons');
 
 var Letter = React.createClass({
-    render : () => {
+    render :function()  {
         var letterStyle = {
             color : this.props.color,
             marginRight : '6px',
