@@ -5,14 +5,11 @@ var express = require('express');
 var bodyParser = require('body-parser');
 var app = express();
 var server = require('http').Server(app);
-var io = require('socket.io')(server);
+var io = require('socket.io')(3300);
 var LetterController = require('./controller/letters/letters.js');
 var letterRoutes = new LetterController(io).routes;
 var IO_EVENT = require('./common/events');
 
-io.on('connection', (socket) => {
-    console.log('connected');
-});
 console.log(__dirname + '/../public');
 app.use(bodyParser.json());
 app.engine('jade', require('jade').__express);
@@ -28,7 +25,7 @@ for (let route of letterRoutes) {
        }
    }
 }
-io.listen(3300);
+
 app.listen(5500, function() {
     console.log('running on 5500');   
 });
