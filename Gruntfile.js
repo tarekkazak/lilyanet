@@ -9,7 +9,7 @@ module.exports = function(grunt) {
                     watch : true,
                     keepAlive : true,
                     transform :[ 
-                        ['reactify', {'es6' : true}]
+                        ['babelify']
                     ]
                 }
             }
@@ -18,8 +18,7 @@ module.exports = function(grunt) {
             dev : {
                 script : 'app/server.js',
                 options : {
-                    watch : ['app'],
-                    nodeArgs : ['--harmony']
+                    watch : ['app']
                 }
             }
         },
