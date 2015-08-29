@@ -7,7 +7,9 @@ var model = require('./model/dataModel.js');
 var index = 0;
 var l = window.letters;
 
-var wordComp = React.render(<Word isLocalResource={window.isLocalResource} words={model.allowedWords}  letters={l}/>, document.getElementById('container'));
+var wordComp = React.render(<Word isLocalResource={window.isLocalResource} words={model.allowedWords}  letters={l}/>, document.getElementById('container'), () => {
+    socket.emit(IO_EVENT.RENDER_COMPLETE);
+});
 
 function updateView(payload) {
     var letter = payload.letter;

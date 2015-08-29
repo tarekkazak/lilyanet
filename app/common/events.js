@@ -3,6 +3,7 @@
         events = {
         WORD_UPDATED : 'wordUpdated',
         VIEW_UPDATED : 'viewUpdated',
+        RENDER_COMPLETE : 'renderComplete',
         LETTER_UPDATED : 'letterUpdated'
     };
 
