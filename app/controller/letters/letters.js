@@ -9,12 +9,13 @@ module.exports = function Letters(io){
     function* generateLetter(words) {
         for(let word of model.allowedWords) {
             for(let letter of word) {
-                console.log({letter : letter});
                 io.emit(IO_EVENT.LETTER_UPDATED, {letter : letter.toUpperCase()});
                 yield letter;
             }
             setTimeout(() =>{
-                gen.next();
+                if(gen.next().done) {
+                    startGenerator();
+                }        
             }, 5000);
 
             yield;
@@ -28,18 +29,7 @@ module.exports = function Letters(io){
     }
 
     var gen, 
-        WordFac = React.createFactory(Word),
-        ioConnectionPromise = new Promise((resolve, reject) => {
-            io.on('connection', (socket) => {
-
-                socket.on(IO_EVENT.RENDER_COMPLETE, () => {
-                    console.log
-                    resolve(socket);
-                });
-                console.log('connected');
-            });
-            
-        });
+        WordFac = React.createFactory(Word);
 
 
     this.routes = [
@@ -63,6 +53,18 @@ module.exports = function Letters(io){
             {
                 path : '/slideshow',
                 get : (req, res) => {
+                    var ioConnectionPromise = new Promise((resolve, reject) => {
+                        io.on('connection', (socket) => {
+
+                            socket.on(IO_EVENT.RENDER_COMPLETE, () => {
+                                console.log('first render');
+                                resolve(socket);
+                            });
+                            console.log('connected');
+                        });
+                        
+                    });
+
                     var content = React.renderToString(WordFac({
                         letters : model.letters,
                         words : model.allowedWords,
@@ -79,7 +81,7 @@ module.exports = function Letters(io){
                         socket.on(IO_EVENT.VIEW_UPDATED, () => {
                             console.log('view updated');
                             setTimeout(() => {
-                                gen.next();        
+                                gen.next();
                            }, 1000); 
                         });
 
