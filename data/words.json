@@ -9,6 +9,12 @@
         "daddy" : {
             "location" : "local"
         },
+        "koala" : {
+            "location" : "remote"
+        },
+        "chevre" : {
+            "location" : "remote"
+        },
         "chat" : {
             "location" : "remote"
         },
@@ -93,23 +99,23 @@
             "location" : "remote"
         },
         "coeur" : {
-            "searchTerm" : "dessin coeur",
+            "searchTerm" : "coeur rouge  dessin",
             "location" : "remote"
         },
         "etoile" : {
-            "searchTerm" : "etoile dessin",
+            "searchTerm" : "etoile jaune  dessin",
             "location" : "remote"
         },
         "triangle" : {
-            "searchTerm" : "triangle dessin",
+            "searchTerm" : "triangle bleu dessin",
             "location" : "remote"
         },
         "carre": {
-            "searchTerm" : "carre dessin",
+            "searchTerm" : "carre vert dessin",
             "location" : "remote"
         },
         "rond": {
-            "searchTerm" : "rond dessin",
+            "searchTerm" : "rond rouge dessin",
             "location" : "remote"
         },
         "bebe" : {

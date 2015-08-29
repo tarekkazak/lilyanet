@@ -9,9 +9,8 @@ module.exports = function(grunt) {
                     watch : true,
                     keepAlive : true,
                     transform :[ 
-                        ['reactify', {'es6' : true}]
-                    ],
-                    extensions : ['.jsx', '.js']
+                        ['babelify']
+                    ]
                 }
             }
         },
@@ -19,8 +18,7 @@ module.exports = function(grunt) {
             dev : {
                 script : 'app/server.js',
                 options : {
-                    ignore : ['node_modules/**', 'package.json', 'Gruntfile.js'],
-                    nodeArgs : ['--harmony']
+                    watch : ['app']
                 }
             }
         },
@@ -40,9 +38,6 @@ module.exports = function(grunt) {
     
     grunt.loadNpmTasks('grunt-browserify');
     grunt.loadNpmTasks('grunt-concurrent');
-    //grunt.loadNpmTasks('grunt-contrib-uglify');
-    //grunt.loadNpmTasks('grunt-contrib-watch');
     grunt.loadNpmTasks('grunt-nodemon');
-    //grunt.loadNpmTasks('grunt-babel');
     grunt.registerTask('default', ['concurrent']);
 };

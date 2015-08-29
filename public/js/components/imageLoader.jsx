@@ -4,15 +4,20 @@ var imageServiceProvider = require('../service/imageServiceProvider.js');
 var imageService;
 var images = (<div/>);
 var searchTerm = '';
+var foundImages = false;
+var style = {
+        visibility : 'hidden'
+    };
 
 function fetchImages() {
+    var self = this;
     imageService = imageServiceProvider.get(this.props.local);
-    var self = this; 
 
     
     function searchComplete(results) {
         console.log(results);
         if(results && results.length) {
+            foundImages = true;
             images = _.map(results, (item) =>{
                 return (
                         <img key={item.url}width="300" height="300" src={item.url} />
@@ -20,7 +25,7 @@ function fetchImages() {
             });
 
             self.forceUpdate();
-        }
+        } 
     }
         
     if(searchTerm !== this.props.word){
@@ -34,9 +39,10 @@ var ImageLoader = React.createClass({
     componentDidMount : fetchImages,
     componentDidUpdate : fetchImages,
     render : function() {
-
+        style.visibility = foundImages ? 'visible' : 'hidden';
+        foundImages = false;
         return (
-                <div>{images}</div>
+                <div style={style}>{images}</div>
                );
         
     }

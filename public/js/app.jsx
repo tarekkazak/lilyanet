@@ -1,23 +1,31 @@
+var IO_EVENT = require('../../app/common/events.js');
+var io = require('socket.io-client')
+var socket = io('http://192.168.1.150:3300');
 var React = require('react/addons');
 var Word = require('./components/word.jsx');
 var model = require('./model/dataModel.js');
 var index = 0;
 var l = window.letters;
 
-var wordComp = React.render(<Word isLocalResource={window.isLocalResource} words={model.allowedWords}  letters={l}/>, document.getElementById('container'));
+var wordComp = React.render(<Word isLocalResource={window.isLocalResource} words={model.allowedWords}  letters={l}/>, document.getElementById('container'), () => {
+    socket.emit(IO_EVENT.RENDER_COMPLETE);
+});
 
-function initView() {
-    l = model.allowedWords[index].toUpperCase().split('');
-    model.letters = l;
+function updateView(payload) {
+    var letter = payload.letter;
+    console.log('socket', letter.toUpperCase());
+    model.letters.push(letter);
     wordComp.setState({
-        letters : l,
+        letters : model.letters,
         words : model.allowedWords,
         isLocalResource : model.isResourceLocal()
+    }, ()=> {
+        console.log('state set');
+        if(model.wordComplete()) { 
+            model.letters = [];
+        }
+        socket.emit(IO_EVENT.VIEW_UPDATED)
     });
-    index++;
-    if(index === model.allowedWords.length) {
-        index = 0;
-    }
 }
 
-setInterval(initView, 10000);
+socket.on(IO_EVENT.LETTER_UPDATED, updateView);
