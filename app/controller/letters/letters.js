@@ -82,7 +82,7 @@ module.exports = function Letters(io){
                             console.log('view updated');
                             setTimeout(() => {
                                 gen.next();
-                           }, 1000); 
+                           }, 1300); 
                         });
 
                         startGenerator();

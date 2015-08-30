@@ -30,6 +30,9 @@
         "penguin" : {
             "location" : "remote"
         },
+        "giraffe" : {
+            "location" : "remote"
+        },
         "poule" : {
             "location" : "remote"
         },
