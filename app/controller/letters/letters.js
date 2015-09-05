@@ -2,92 +2,50 @@ var _ = require('lodash'),
     IO_EVENT = require('../../common/events'),
     React = require('react/addons'),
     Word = require('../../../public/js/components/word.jsx'),
-    model = require('../../../public/js/model/dataModel.js');
+    model = require('../../../public/js/model/dataModel.js'),
+    LetterGenerator = require('../../service/letterGeneratorService.js').LetterGenerator;
 
 module.exports = function Letters(io){
+    var WordFac = React.createFactory(Word), 
+        isSlideshow,
+        connectionsMap = new WeakMap();
 
-    function* generateLetter(words) {
-        for(let word of model.allowedWords) {
-            for(let letter of word) {
-                io.emit(IO_EVENT.LETTER_UPDATED, {letter : letter.toUpperCase()});
-                yield letter;
-            }
-            setTimeout(() =>{
-                if(gen.next().done) {
-                    startGenerator();
-                }        
-            }, 5000);
+    function defaultRender(req, res) {
+        var content = React.renderToString(WordFac({
+            letters : model.letters,
+            words : model.allowedWords,
+            isLocalResource : false
+        }));
 
-            yield;
+        res.render('index', {
+            content : content,
+            word : '',
+            isLocalResource : false
+        });
+    }
+    
+    io.on('connection', (socket) => {
+        console.log('connected', socket.id);
+        if(isSlideshow) {
+            connectionsMap.set(socket, new LetterGenerator(model, io, socket));
         }
-    }
 
-    function startGenerator() {
-        console.log('start generation');
-        gen = generateLetter(model.allowedWords);
-        gen.next();
-    }
-
-    var gen, 
-        WordFac = React.createFactory(Word);
-
+        socket.on('disconnect', () => {
+            console.log('disconnected', socket.id);
+            connectionsMap.delete(socket);
+        });
+    });
 
     this.routes = [
             {
                 path : '/',
-                get : (req, res) => {
-                    var content = React.renderToString(WordFac({
-                        letters : model.letters,
-                        words : model.allowedWords,
-                        isLocalResource : false
-                    }));
-
-                    res.render('index', {
-                        content : content,
-                        word : '',
-                        isLocalResource : false
-                    });
-
-                }
+                get : defaultRender
             },
             {
                 path : '/slideshow',
                 get : (req, res) => {
-                    var ioConnectionPromise = new Promise((resolve, reject) => {
-                        io.on('connection', (socket) => {
-
-                            socket.on(IO_EVENT.RENDER_COMPLETE, () => {
-                                console.log('first render');
-                                resolve(socket);
-                            });
-                            console.log('connected');
-                        });
-                        
-                    });
-
-                    var content = React.renderToString(WordFac({
-                        letters : model.letters,
-                        words : model.allowedWords,
-                        isLocalResource : false
-                    }));
-
-                    res.render('index', {
-                        content : content,
-                        word : '',
-                        isLocalResource : false
-                    });
-
-                    ioConnectionPromise.then((socket) => {
-                        socket.on(IO_EVENT.VIEW_UPDATED, () => {
-                            console.log('view updated');
-                            setTimeout(() => {
-                                gen.next();
-                           }, 1300); 
-                        });
-
-                        startGenerator();
-                    });
-
+                    isSlideshow = true;
+                    defaultRender(req, res);
                 }
             },
             {

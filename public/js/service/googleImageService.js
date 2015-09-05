@@ -7,6 +7,7 @@ function GoogleImageService() {
         function OnLoad() {
             // Create an Image Search instance.
             var imageSearch = new google.search.ImageSearch();
+            imageSearch.setResultSetSize(8);
             resolve(imageSearch);
         }
         
@@ -25,7 +26,7 @@ function GoogleImageService() {
         return promise.then((imageSearch) => {
             var resultPromise = new Promise((resolve, reject) => {
                 function searchComplete() {
-                    resolve(imageSearch.results);
+                    resolve(imageSearch.results.map((item) => ({url : item.tbUrl}) ));
                 }
 
                 imageSearch.setSearchCompleteCallback(self, searchComplete, null);
