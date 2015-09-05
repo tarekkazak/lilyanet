@@ -21,6 +21,12 @@
         "chien" : {
             "location" : "remote"
         },
+        "serpent" : {
+            "location" : "remote"
+        },
+        "crocodile" : {
+            "location" : "remote"
+        },
         "cheval" : {
             "location" : "remote"
         },
@@ -30,7 +36,7 @@
         "penguin" : {
             "location" : "remote"
         },
-        "giraffe" : {
+        "girafe" : {
             "location" : "remote"
         },
         "poule" : {
@@ -102,23 +108,23 @@
             "location" : "remote"
         },
         "coeur" : {
-            "searchTerm" : "coeur rouge  dessin",
+            "searchTerm" : "coeur dessin",
             "location" : "remote"
         },
         "etoile" : {
-            "searchTerm" : "etoile jaune  dessin",
+            "searchTerm" : "etoile dessin",
             "location" : "remote"
         },
         "triangle" : {
-            "searchTerm" : "triangle bleu dessin",
+            "searchTerm" : "triangle dessin",
             "location" : "remote"
         },
         "carre": {
-            "searchTerm" : "carre vert dessin",
+            "searchTerm" : "carre dessin",
             "location" : "remote"
         },
         "rond": {
-            "searchTerm" : "rond rouge dessin",
+            "searchTerm" : "rond dessin",
             "location" : "remote"
         },
         "bebe" : {
