@@ -9,16 +9,16 @@
         "daddy" : {
             "location" : "local"
         },
-        "koala" : {
-            "location" : "remote"
-        },
-        "chevre" : {
-            "location" : "remote"
-        },
         "chat" : {
             "location" : "remote"
         },
         "chien" : {
+            "location" : "remote"
+        },
+        "koala" : {
+            "location" : "remote"
+        },
+        "chevre" : {
             "location" : "remote"
         },
         "serpent" : {

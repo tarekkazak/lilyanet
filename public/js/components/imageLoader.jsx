@@ -20,7 +20,7 @@ function fetchImages() {
             foundImages = true;
             images = _.map(results, (item) =>{
                 return (
-                        <img key={item.url}width="300" height="300" src={item.url} />
+                        <img key={item.url}width="200" height="200" src={item.url} />
                        );
             });
 
