@@ -23,6 +23,6 @@ for (let route of letterRoutes) {
    }
 }
 
-app.listen(5500, function() {
+app.listen(80, function() {
     console.log('running on 5500');   
 });
