@@ -15,7 +15,7 @@
       "start" : "node app/server.js"
   },
   "engines" : {
-      "node" : "0.12.1"
+      "node" : "0.12.2"
   },
   "dependencies": {
     "babel": "^5.8.21",
