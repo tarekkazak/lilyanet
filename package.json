@@ -13,7 +13,7 @@
   "homepage": "https://github.com/tarekkazak/lilyanet",
   "scripts" : {
       "prestart" : "browserify -t babelify public/js/app.jsx >  public/js/bundle.js",
-      "start" : "PORT=80 node app/server.js"
+      "start" : "node -e 'process.env.PORT=80' app/server.js"
   },
   "engines" : {
       "node" : "0.12.2"
