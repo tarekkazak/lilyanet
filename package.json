@@ -12,8 +12,8 @@
   },
   "homepage": "https://github.com/tarekkazak/lilyanet",
   "scripts" : {
-      "prestart" : "grunt browserify:prod",
-      "start" : "node app/server.js"
+      "prestart" : "browserify -t babelify public/js/app.jsx >  public/js/bundle.js",
+      "start" : "PORT=80 node app/server.js"
   },
   "engines" : {
       "node" : "0.12.2"
