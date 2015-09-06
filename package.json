@@ -12,13 +12,17 @@
   },
   "homepage": "https://github.com/tarekkazak/lilyanet",
   "scripts" : {
-      "prestart" : "browserify -t babelify public/js/app.jsx >  public/js/bundle.js",
+      "install" : "browserify -t babelify public/js/app.jsx >  public/js/bundle.js",
+      "prestart" : "grunt browserify:prod",
       "start" : "node app/server.js"
   },
   "engines" : {
       "node" : "0.12.2"
   },
   "dependencies": {
+    "babelify": "^6.2.0",
+    "grunt": "^0.4.5",
+    "grunt-browserify": "^4.0.0",
     "babel": "^5.8.21",
     "body-parser": "^1.13.3",
     "express": "^4.13.1",
@@ -30,11 +34,7 @@
     "socket.io-client": "^1.3.6"
   },
   "devDependencies": {
-    "babelify": "^6.2.0",
-    "grunt": "^0.4.5",
-    "grunt-browserify": "^4.0.0",
     "grunt-concurrent": "^2.0.2",
-    "grunt-nodemon": "^0.4.0",
-    "reactify": "^1.1.1"
+    "grunt-nodemon": "^0.4.0"
   }
 }
