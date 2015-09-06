@@ -12,13 +12,26 @@ module.exports = function(grunt) {
                         ['babelify']
                     ]
                 }
+            },
+            prod : {
+                files : {
+                    'public/js/bundle.js' :['public/js/app.jsx']
+                },
+                options : {
+                    transform :[ 
+                        ['babelify']
+                    ]
+                }
             }
         },
         nodemon: {
             dev : {
                 script : 'app/server.js',
                 options : {
-                    watch : ['app']
+                    watch : ['app'],
+                    env : {
+                        PORT : '5500'
+                    }
                 }
             }
         },

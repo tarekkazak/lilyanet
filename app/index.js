@@ -23,6 +23,6 @@ for (let route of letterRoutes) {
    }
 }
 
-app.listen(80, function() {
-    console.log('running on 5500');   
+app.listen(process.env.PORT, function() {
+    console.log('running on ', process.env.PORT);   
 });
