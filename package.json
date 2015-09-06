@@ -12,7 +12,6 @@
   },
   "homepage": "https://github.com/tarekkazak/lilyanet",
   "scripts" : {
-      "install" : "browserify -t babelify public/js/app.jsx >  public/js/bundle.js",
       "prestart" : "grunt browserify:prod",
       "start" : "node app/server.js"
   },
