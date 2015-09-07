@@ -13,7 +13,7 @@
   "homepage": "https://github.com/tarekkazak/lilyanet",
   "scripts" : {
       "install" : "grunt browserify:prod",
-      "start" : "node app/server.js"
+      "postinstall" : "node app/server.js"
   },
   "engines" : {
       "node" : "0.12.2"
