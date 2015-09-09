@@ -44,6 +44,16 @@ module.exports = function(grunt) {
                 }
             }
 
+        },
+        uglify: {
+            prod : {
+                options :{
+                    screwIE8 : true
+                },
+                files : {
+                    'public/js/bundle.min.js' : ['public/js/bundle.js']
+                }
+            }
         }
         
         
@@ -52,5 +62,7 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-browserify');
     grunt.loadNpmTasks('grunt-concurrent');
     grunt.loadNpmTasks('grunt-nodemon');
-    grunt.registerTask('default', ['concurrent']);
+    grunt.loadNpmTasks('grunt-contrib-uglify');
+    grunt.registerTask('dev', ['concurrent']);
+    grunt.registerTask('prod', ['browserify:prod', 'uglify:prod']);
 };
