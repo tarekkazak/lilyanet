@@ -51,7 +51,7 @@ function DataModel() {
             return;
         }
         var word = self.letters.join('').toLowerCase();
-        return this.containsWord(word) || !wordIsValid(word);
+        return self.containsWord(word) || !wordIsValid(word);
     };
 
 }

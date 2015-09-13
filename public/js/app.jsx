@@ -1,6 +1,6 @@
 var IO_EVENT = require('../../app/common/events.js');
 var io = require('socket.io-client')
-var socket = io(process.env.SOCKET_SERVER);
+var socket = io(window.socketServer);
 var React = require('react/addons');
 var Word = require('./components/word.jsx');
 var model = require('./model/dataModel.js');

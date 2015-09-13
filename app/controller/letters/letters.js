@@ -20,7 +20,8 @@ module.exports = function Letters(io){
         res.render('index', {
             content : content,
             word : '',
-            isLocalResource : false
+            isLocalResource : false,
+            socketServer : process.env.SOCKET_SERVER
         });
     }
     
