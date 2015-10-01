@@ -1,15 +1,12 @@
-(function() {
-    var root = this,
-        events = {
-        WORD_UPDATED : 'wordUpdated',
-        VIEW_UPDATED : 'viewUpdated',
-        RENDER_COMPLETE : 'renderComplete',
-        LETTER_UPDATED : 'letterUpdated'
-    };
-
-    if(module && module.exports) {
-        module.exports = events;
-    } else {
-        root.IO_EVENTS = events;
+class IOEvents {
+    constructor() {
+        this.WORD_UPDATED = 'wordUpdated';
+        this.VIEW_UPDATED = 'viewUpdated';
+        this.RENDER_COMPLETE = 'renderComplete';
+        this.LETTER_UPDATED = 'letterUpdated';
     }
- }());
+}
+
+export var ioEvents = new IOEvents();
+
+

@@ -1,8 +1,8 @@
+import { DataModel } from '../../../public/js/model/dataModel.js';
 var _ = require('lodash'),
-    IO_EVENT = require('../../common/events'),
+    IO_EVENT = require('../../common/events').ioEvents,
     React = require('react/addons'),
     Word = require('../../../public/js/components/word.jsx'),
-    model = require('../../../public/js/model/dataModel.js'),
     LetterGenerator = require('../../service/letterGeneratorService.js').LetterGenerator;
 
 module.exports = function Letters(io){

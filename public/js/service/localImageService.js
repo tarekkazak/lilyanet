@@ -1,9 +1,11 @@
-var model = require('../model/dataModel.js');
+export class LocalImageService {
 
-function LocalImageService() {
+    constructor(model) {
+        this.model = model;
+    }
 
-    this.search = function(searchTerm) {
-        if(!model.containsWord(searchTerm)) {
+    search(searchTerm) {
+        if(!this.model.containsWord(searchTerm)) {
             return;
         }
 
@@ -28,5 +30,3 @@ function LocalImageService() {
     }
 
 }
-
-module.exports = new LocalImageService();
