@@ -33,7 +33,7 @@
         "elephant" : {
             "location" : "remote"
         },
-        "penguin" : {
+        "pingouin" : {
             "location" : "remote"
         },
         "girafe" : {
@@ -134,6 +134,15 @@
             "location" : "remote"
         },
         "banane" : {
+            "location" : "remote"
+        },
+        "petits pois" : {
+            "location" : "remote"
+        },
+        "myrtille" : {
+            "location" : "remote"
+        },
+        "carotte" : {
             "location" : "remote"
         }
     }

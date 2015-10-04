@@ -31,7 +31,7 @@ module.exports = function(grunt) {
                     watch : ['app'],
                     env : {
                         PORT : '5500',
-                        SOCKET_SERVER : '192.168.1.150:3300'
+                        SOCKET_SERVER:'http://192.168.1.150:3300'
                     }
                 }
             }
