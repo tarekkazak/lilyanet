@@ -107,6 +107,9 @@
         "ours" : {
             "location" : "remote"
         },
+        "papillon" : {
+            "location" : "remote"
+        },
         "coeur" : {
             "searchTerm" : "coeur dessin",
             "location" : "remote"
@@ -144,6 +147,26 @@
         },
         "carotte" : {
             "location" : "remote"
+        },
+        "chaussures" : {
+            "location" : "remote",
+            "searchTerm" : "chaussures pour enfant"
+        },
+        "chaussettes" : {
+            "location" : "remote",
+            "searchTerm" : "chaussettes pour enfant"
+        },
+        "t-shirt" : {
+            "location" : "remote",
+            "searchTerm" : "t-shirt pour enfant"
+        },
+        "pantalon" : {
+            "location" : "remote",
+            "searchTerm" : "pantalon pour enfant"
+        },
+        "manteau" : {
+            "location" : "remote",
+            "searchTerm" : "manteau pour enfant"
         }
     }
 }
