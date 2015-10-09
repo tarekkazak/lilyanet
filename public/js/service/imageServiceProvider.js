@@ -1,6 +1,6 @@
 import { GoogleImageService } from './googleImageService.js'
 import { LocalImageService } from './localImageService.js'
-import model from '../app.jsx';
+import model from '../../../app/common/appContainer.js';
 
 export class ImageServiceProvider {
 
