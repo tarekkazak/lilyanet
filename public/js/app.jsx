@@ -3,8 +3,7 @@ var io = require('socket.io-client')
 var socket = io(window.socketServer);
 var React = require('react/addons');
 var Word = require('./components/word.jsx');
-import { DataModel } from './model/dataModel.js';
-export var model = new DataModel();
+import { model } from '../../app/common/appContainer.js';
 var index = 0;
 var l = window.letters;
 

@@ -1,4 +1,5 @@
-import model from '../../common/appContainer.js';
+import {model} from '../../common/appContainer.js';
+
 var _ = require('lodash'),
     IO_EVENT = require('../../common/events').ioEvents,
     React = require('react/addons'),
