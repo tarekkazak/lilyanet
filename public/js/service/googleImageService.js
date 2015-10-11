@@ -32,8 +32,8 @@ export class GoogleImageService {
 
                 imageSearch.setSearchCompleteCallback(self, searchComplete, null);
                 
-                if(model.containsWord(searchTerm)) {
-                    imageSearch.execute(model.getSearchTerm(searchTerm));
+                if(this.model.containsWord(searchTerm)) {
+                    imageSearch.execute(this.model.getSearchTerm(searchTerm));
                 }
                 
             });
