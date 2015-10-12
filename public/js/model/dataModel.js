@@ -39,7 +39,7 @@ export class DataModel {
             return Maybe.fromNullable(item.location);
         }
 
-        return this.wordDataCompose(Maybe.of(this.letters.join('')))
+        return this.wordDataCompose(Maybe.of(this.letters.join(''))).chain(getLocation)
                 .chain((x) => x === 'local');
     };
 
