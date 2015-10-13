@@ -5,7 +5,7 @@ var _ = require('lodash');
 export class DataModel {
 
     constructor() {
-        this. data = require('../../../data/words.json');
+        this.data = require('../../../data/words.json');
         this.dataMap = new Map();
         this.allowedWords = [];
         this.letters = [];
@@ -33,13 +33,13 @@ export class DataModel {
         return Maybe.fromNullable(this.dataMap.get(word));
     };
 
-
     isResourceLocal() {
         function getLocation(item) {
             return Maybe.fromNullable(item.location);
         }
 
-        return this.wordDataCompose(Maybe.of(this.letters.join(''))).chain(getLocation)
+        return this.wordDataCompose(Maybe.of(this.letters.join('')))
+                .chain(getLocation)
                 .chain((x) => x === 'local');
     };
 
@@ -48,16 +48,8 @@ export class DataModel {
                 .chain((x) => x.searchTerm || word);
     };
 
-
     wordComplete(){
-        var word = this.letters.join('').toLowerCase();
-
-        
-        if(this.letters.length < 1) {
-            return false;
-        }
-        return this.containsWord(word);
+        return this.containsWord(this.letters.join(''));
     };
 
 }
-
