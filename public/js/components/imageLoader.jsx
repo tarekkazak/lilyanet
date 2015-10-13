@@ -1,6 +1,7 @@
 var React  = require('react/addons');
 var _ = require('lodash');
-var imageServiceProvider = require('../service/imageServiceProvider.js');
+import {ImageServiceProvider} from '../service/imageServiceProvider.js';
+var imageServiceProvider = new ImageServiceProvider();
 var imageService;
 var images = (<div/>);
 var searchTerm = '';

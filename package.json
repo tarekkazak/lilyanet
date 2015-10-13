@@ -11,13 +11,14 @@
     "url": "https://github.com/tarekkazak/lilyanet/issues"
   },
   "homepage": "https://github.com/tarekkazak/lilyanet",
-  "scripts" : {
-      "start" :  "SOCKET_SERVER='http://lilyanet.com:3300'  PORT='80' node app/server.js"
+  "scripts": {
+    "start": "SOCKET_SERVER='http://lilyanet.com:3300'  PORT='80' node app/server.js"
   },
   "dependencies": {
     "babel": "^5.8.21",
     "body-parser": "^1.13.3",
     "express": "^4.13.1",
+    "folktale": "^1.0.0-SNAPSHOT",
     "grunt-contrib-uglify": "^0.9.2",
     "jade": "^1.11.0",
     "jquery": "^2.1.4",

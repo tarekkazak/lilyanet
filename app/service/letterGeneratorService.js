@@ -1,5 +1,6 @@
-var IO_EVENT = require('../common/events');
-var MessageService = require('./messageService.js').MessageService;
+var IO_EVENT = require('../common/events').ioEvents;
+
+import { MessageService } from './messageService.js';
 
 export class LetterGenerator {
     

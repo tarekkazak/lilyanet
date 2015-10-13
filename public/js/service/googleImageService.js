@@ -1,29 +1,30 @@
-var model = require('../model/dataModel.js');
-
-function GoogleImageService() {
-
-    var promise = new Promise((resolve, reject) => {
-        
-        function OnLoad() {
-            // Create an Image Search instance.
-            var imageSearch = new google.search.ImageSearch();
-            imageSearch.setResultSetSize(8);
-            resolve(imageSearch);
-        }
-        
-        if(google) {
-            google.load('search', '1', {language:'fr'});
-            google.setOnLoadCallback(OnLoad);
-        }
-    });
-
-
+export class GoogleImageService {
+    constructor(model) {
+        this.model = model;
+        this.promise = new Promise((resolve, reject) => {
+            
+            function OnLoad() {
+                // Create an Image Search instance.
+                var imageSearch = new google.search.ImageSearch();
+                imageSearch.setResultSetSize(8);
+                resolve(imageSearch);
+            }
+            
+            if(google) {
+                google.load('search', '1', {language:'fr'});
+                google.setOnLoadCallback(OnLoad);
+            }
+        });
+    }
 
 
-    this.search = function(searchTerm) {
+
+
+
+    search(searchTerm) {
         var self = this;
 
-        return promise.then((imageSearch) => {
+        return this.promise.then((imageSearch) => {
             var resultPromise = new Promise((resolve, reject) => {
                 function searchComplete() {
                     resolve(imageSearch.results.map((item) => ({url : item.tbUrl}) ));
@@ -31,8 +32,8 @@ function GoogleImageService() {
 
                 imageSearch.setSearchCompleteCallback(self, searchComplete, null);
                 
-                if(model.containsWord(searchTerm)) {
-                    imageSearch.execute(model.getSearchTerm(searchTerm));
+                if(this.model.containsWord(searchTerm)) {
+                    imageSearch.execute(this.model.getSearchTerm(searchTerm));
                 }
                 
             });
@@ -45,4 +46,3 @@ function GoogleImageService() {
 
 }
 
-module.exports = new GoogleImageService();

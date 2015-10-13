@@ -1,15 +1,21 @@
-function ImageServiceProvider () {
-    var googleImageService = require('./googleImageService.js');
-    var localImageService = require('./localImageService.js');
+import { GoogleImageService } from './googleImageService.js'
+import { LocalImageService } from './localImageService.js'
+import { model } from '../../../app/common/appContainer.js';
 
-    this.get = function(local) {
+export class ImageServiceProvider {
+
+    constructor() {
+        this.googleImageService = new GoogleImageService(model);
+        this.localImageService = new  LocalImageService(model);
+    }
+
+    get(local) {
         if(local) {
-            return localImageService;
+            return this.localImageService;
         } else {
-            return googleImageService;
+            return this.googleImageService;
         }
-    };
+    }
        
 }
 
-module.exports = new ImageServiceProvider();

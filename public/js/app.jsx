@@ -1,9 +1,9 @@
-var IO_EVENT = require('../../app/common/events.js');
+var IO_EVENT = require('../../app/common/events.js').ioEvents;
 var io = require('socket.io-client')
 var socket = io(window.socketServer);
 var React = require('react/addons');
 var Word = require('./components/word.jsx');
-var model = require('./model/dataModel.js');
+import { model } from '../../app/common/appContainer.js';
 var index = 0;
 var l = window.letters;
 
