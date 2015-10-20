@@ -4,6 +4,7 @@ var _ = require('lodash'),
     IO_EVENT = require('../../common/events').ioEvents,
     React = require('react/addons'),
     Word = require('../../../public/js/components/word.jsx'),
+    mode,
     LetterGenerator = require('../../service/letterGeneratorService.js').LetterGenerator;
 
 module.exports = function Letters(io){
@@ -14,7 +15,7 @@ module.exports = function Letters(io){
     function defaultRender(req, res) {
         var content = React.renderToString(WordFac({
             letters : model.letters,
-            words : model.allowedWords,
+            words : model.getWords(),
             isLocalResource : false
         }));
 
@@ -29,7 +30,7 @@ module.exports = function Letters(io){
     io.on('connection', (socket) => {
         console.log('connected', socket.id);
         if(isSlideshow) {
-            connectionsMap.set(socket, new LetterGenerator(model, io, socket));
+            connectionsMap.set(socket, new LetterGenerator(model, io, socket, mode));
         }
 
         socket.on('disconnect', () => {
@@ -47,6 +48,14 @@ module.exports = function Letters(io){
                 path : '/slideshow',
                 get : (req, res) => {
                     isSlideshow = true;
+                    defaultRender(req, res);
+                }
+            },
+            {
+                path : '/slideshow/syllables',
+                get : (req, res) => {
+                    isSlideshow = true;
+                    mode = 'syllables';
                     defaultRender(req, res);
                 }
             },
@@ -72,7 +81,7 @@ module.exports = function Letters(io){
 
                     content = React.renderToString(WordFac({
                         letters : model.letters,
-                        words : model.allowedWords,
+                        words : model.getWords(),
                         isLocalResource : isLocalResource
                     }));
 
