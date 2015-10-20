@@ -1,3 +1,5 @@
+var monads = require('folktale/control').monads;
+var Maybe = require('folktale/data').Maybe;
 var React = require('react/addons');
 var _ = require('lodash');
 var Letter = require('./letter.jsx');
@@ -21,7 +23,10 @@ var Word = React.createClass({
     },
     render : function() {
         var self = this;
-        var lettersForWord = _.map(this.state.letters, (item, index) => ({id:index, character:item}));
+        var lettersTransform = _.compose( monads.map((character, id) => ({id, character})), 
+                monads.map((x) => x.replace(' ', '\u00a0')));
+        
+        var lettersForWord = lettersTransform(this.state.letters);
         var imageLoader;
         var word = '', letters = _.map(lettersForWord, function(item) {
             word += item.character;
