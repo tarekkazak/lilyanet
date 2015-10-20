@@ -48,6 +48,7 @@ module.exports = function Letters(io){
                 path : '/slideshow',
                 get : (req, res) => {
                     isSlideshow = true;
+                    mode = 'default';
                     defaultRender(req, res);
                 }
             },
