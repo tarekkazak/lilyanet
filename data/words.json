@@ -55,41 +55,53 @@
             "syllables" : ["pou", "le"]
         },
         "coq" : {
-            "location" : "remote"
+            "location" : "remote",
+            "syllables" : ["coq"]
         },
         "zebre" : {
-            "location" : "remote"
+            "location" : "remote",
+            "syllables" : ["ze", "bre"]
         },
         "vache" : {
-            "location" : "remote"
+            "location" : "remote",
+            "syllables" : ["va", "che"]
         },
         "hibou" : {
-            "location" : "remote"
+            "location" : "remote",
+            "syllables" : ["hi", "bou"]
         },
         "singe" : {
-            "location" : "remote"
+            "location" : "remote",
+            "syllables" : ["sin", "ge"]
         },
         "lapin": {
-            "location" : "remote"
+            "location" : "remote",
+            "syllables" : ["la", "pin"]
         },
         "tortue" : {
-            "location" : "remote"
+            "location" : "remote",
+            "syllables" : ["tor", "tue"]
         },
         "cochon" : {
-            "location" : "remote"
+            "location" : "remote",
+            "syllables" : ["co", "chon"]
         },
         "canard" : {
-            "location" : "remote"
+            "location" : "remote",
+            "syllables" : ["ca", "nard"]
         },
         "ecureuil" : {
-            "location" : "remote"
+            "location" : "remote",
+            "syllables" : ["e", "cu", "reuil"]
         },
         "souris" : {
-            "location" : "remote"
+            "location" : "remote",
+            "syllables" : ["sou", "ris"]
         },
         "doudou": {
             "searchTerm" : "doudou tchoupi",
-            "location" : "remote"
+            "location" : "remote",
+            "syllables" : ["dou", "dou"]
         },
         "lalou": {
             "searchTerm" : "lalou tchoupi",
