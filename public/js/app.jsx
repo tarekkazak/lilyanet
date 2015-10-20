@@ -7,7 +7,7 @@ import { model } from '../../app/common/appContainer.js';
 var index = 0;
 var l = window.letters;
 
-var wordComp = React.render(<Word isLocalResource={window.isLocalResource} words={model.allowedWords}  letters={l}/>, document.getElementById('container'), () => {
+var wordComp = React.render(<Word isLocalResource={window.isLocalResource} words={model.getWords()}  letters={l}/>, document.getElementById('container'), () => {
     socket.emit(IO_EVENT.RENDER_COMPLETE);
 });
 
@@ -17,7 +17,7 @@ function updateView(payload) {
     model.letters.push(letter);
     wordComp.setState({
         letters : model.letters,
-        words : model.allowedWords,
+        words : model.getWords(),
         isLocalResource : model.isResourceLocal()
     }, ()=> {
         console.log('state set');

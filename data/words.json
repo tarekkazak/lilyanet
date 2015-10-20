@@ -1,13 +1,16 @@
 {
     "words" : {
         "mama" : {
-            "location" : "local"
+            "location" : "local",
+            "syllables" : ["ma","ma"]
         },
         "lilya" : {
-            "location" : "local"
+            "location" : "local",
+            "syllables" : ["li","ly", "a"]
         },
         "daddy" : {
-            "location" : "local"
+            "location" : "local",
+            "syllables" : ["da","ddy"]
         },
         "chat" : {
             "location" : "remote"
@@ -16,68 +19,89 @@
             "location" : "remote"
         },
         "koala" : {
-            "location" : "remote"
+            "location" : "remote",
+            "syllables" : ["ko","a", "la"]
         },
         "chevre" : {
-            "location" : "remote"
+            "location" : "remote",
+            "syllables" : ["che","vre"]
         },
         "serpent" : {
-            "location" : "remote"
+            "location" : "remote",
+            "syllables" : ["ser","pent"]
         },
         "crocodile" : {
-            "location" : "remote"
+            "location" : "remote",
+            "syllables" : ["cro","co", "dile"]
         },
         "cheval" : {
-            "location" : "remote"
+            "location" : "remote",
+            "syllables" : ["che","val"]
         },
         "elephant" : {
-            "location" : "remote"
+            "location" : "remote",
+            "syllables" : ["e","le", "phant"]
         },
         "pingouin" : {
-            "location" : "remote"
+            "location" : "remote",
+            "syllables" : ["pin", "gou","in"]
         },
         "girafe" : {
-            "location" : "remote"
+            "location" : "remote",
+            "syllables" : ["gi", "ra", "fe"]
         },
         "poule" : {
-            "location" : "remote"
+            "location" : "remote",
+            "syllables" : ["pou", "le"]
         },
         "coq" : {
-            "location" : "remote"
+            "location" : "remote",
+            "syllables" : ["coq"]
         },
         "zebre" : {
-            "location" : "remote"
+            "location" : "remote",
+            "syllables" : ["ze", "bre"]
         },
         "vache" : {
-            "location" : "remote"
+            "location" : "remote",
+            "syllables" : ["va", "che"]
         },
         "hibou" : {
-            "location" : "remote"
+            "location" : "remote",
+            "syllables" : ["hi", "bou"]
         },
         "singe" : {
-            "location" : "remote"
+            "location" : "remote",
+            "syllables" : ["sin", "ge"]
         },
         "lapin": {
-            "location" : "remote"
+            "location" : "remote",
+            "syllables" : ["la", "pin"]
         },
         "tortue" : {
-            "location" : "remote"
+            "location" : "remote",
+            "syllables" : ["tor", "tue"]
         },
         "cochon" : {
-            "location" : "remote"
+            "location" : "remote",
+            "syllables" : ["co", "chon"]
         },
         "canard" : {
-            "location" : "remote"
+            "location" : "remote",
+            "syllables" : ["ca", "nard"]
         },
         "ecureuil" : {
-            "location" : "remote"
+            "location" : "remote",
+            "syllables" : ["e", "cu", "reuil"]
         },
         "souris" : {
-            "location" : "remote"
+            "location" : "remote",
+            "syllables" : ["sou", "ris"]
         },
         "doudou": {
             "searchTerm" : "doudou tchoupi",
-            "location" : "remote"
+            "location" : "remote",
+            "syllables" : ["dou", "dou"]
         },
         "lalou": {
             "searchTerm" : "lalou tchoupi",
