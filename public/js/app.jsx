@@ -1,13 +1,12 @@
-var IO_EVENT = require('../../app/common/events.js').ioEvents;
+import {ioEvents as IO_EVENT} from '../../app/common/events';
+import {Word} from './components/word.jsx';
+import {appContainer} from '../../app/common/appContainer.js';
 var io = require('socket.io-client')
-var socket = io(window.socketServer);
+var socket = io(container.socketServer);
 var React = require('react/addons');
-var Word = require('./components/word.jsx');
-import { model } from '../../app/common/appContainer.js';
-var index = 0;
-var l = window.letters;
+var model = appContainer.model;
 
-var wordComp = React.render(<Word isLocalResource={window.isLocalResource} words={model.getWords()}  letters={l}/>, document.getElementById('container'), () => {
+var wordComp = React.render(<Word isLocalResource={container.isLocalResource} words={model.getWords()}  letters={container.letters}/>, document.getElementById('container'), () => {
     socket.emit(IO_EVENT.RENDER_COMPLETE);
 });
 

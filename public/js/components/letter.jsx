@@ -1,7 +1,11 @@
 var React = require('react/addons');
 
-var Letter = React.createClass({
-    render :function()  {
+export class Letter extends React.Component {
+    constructor(props) {
+        super(props);
+    }
+
+    render()  {
         var letterStyle = {
             color : this.props.color,
             marginRight : '6px',
@@ -13,6 +17,5 @@ var Letter = React.createClass({
                 <span style={letterStyle}>{this.props.character}</span>
                );
     }
-});
+}
 
-module.exports = Letter;

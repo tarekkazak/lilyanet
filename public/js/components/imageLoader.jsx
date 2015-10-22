@@ -1,5 +1,5 @@
 var React  = require('react/addons');
-var _ = require('lodash');
+import {_} from 'lodash';
 import {ImageServiceProvider} from '../service/imageServiceProvider.js';
 var imageServiceProvider = new ImageServiceProvider();
 var imageService;
@@ -10,36 +10,46 @@ var style = {
         visibility : 'hidden'
     };
 
-function fetchImages() {
-    var self = this;
-    imageService = imageServiceProvider.get(this.props.local);
 
-    
-    function searchComplete(results) {
-        console.log(results);
-        if(results && results.length) {
-            foundImages = true;
-            images = _.map(results, (item) =>{
-                return (
-                        <img key={item.url}width="200" height="200" src={item.url} />
-                       );
-            });
-
-            self.forceUpdate();
-        } 
+export class ImageLoader extends React.Component {
+    constructor(props) {
+        super(props)
     }
+
+     fetchImages() {
+        imageService = imageServiceProvider.get(this.props.local);
+
         
-    if(searchTerm !== this.props.word){
-        searchTerm = this.props.word; 
-        imageService.search(searchTerm).then(searchComplete);
+        var searchComplete = (results) => {
+            console.log(results);
+            if(results && results.length) {
+                foundImages = true;
+                images = _.map(results, (item) =>{
+                    return (
+                            <img key={item.url}width="200" height="200" src={item.url} />
+                           );
+                });
+
+                this.forceUpdate();
+            } 
+        };
+            
+        if(searchTerm !== this.props.word){
+            searchTerm = this.props.word; 
+            imageService.search(searchTerm).then(searchComplete);
+        }
+
     }
 
-}
+    componentDidMount() {
+        this.fetchImages();
+    }
 
-var ImageLoader = React.createClass({
-    componentDidMount : fetchImages,
-    componentDidUpdate : fetchImages,
-    render : function() {
+    componentDidUpdate() {
+        this.fetchImages();
+    }
+
+    render() {
         style.visibility = foundImages ? 'visible' : 'hidden';
         foundImages = false;
         return (
@@ -47,6 +57,4 @@ var ImageLoader = React.createClass({
                );
         
     }
-});
-
-module.exports = ImageLoader;
+}
