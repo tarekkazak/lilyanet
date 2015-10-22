@@ -1,9 +1,10 @@
-import {model} from '../../common/appContainer.js';
+import {appContainer} from '../../common/appContainer.js';
+import {Word} from '../../../public/js/components/word.jsx';
+var model = appContainer.model;
 
 var _ = require('lodash'),
     IO_EVENT = require('../../common/events').ioEvents,
     React = require('react/addons'),
-    Word = require('../../../public/js/components/word.jsx'),
     mode,
     LetterGenerator = require('../../service/letterGeneratorService.js').LetterGenerator;
 
@@ -23,6 +24,7 @@ module.exports = function Letters(io){
             content : content,
             word : '',
             isLocalResource : false,
+            source : process.env.ENVIRONMENT === 'DEV' ? 'bundle.js' : 'bundle.min.js',
             socketServer : process.env.SOCKET_SERVER
         });
     }
@@ -89,6 +91,7 @@ module.exports = function Letters(io){
                     res.render('index', {
                         content : content,
                         word : model.letters.join(''),
+                        source : process.env.ENVIRONMENT === 'DEV' ? 'bundle.js' : 'bundle.min.js',
                         isLocalResource : isLocalResource
                     });
                 }]

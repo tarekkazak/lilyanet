@@ -5,11 +5,13 @@ html
         title
         script(src="https://www.google.com/jsapi")
         script.
-            var word = "#{word}";
-            var socketServer = "#{socketServer}";
-            var isLocalResource = "#{isLocalResource}" === 'true';
-            console.log(isLocalResource);
-            var letters = word.split('');
+            var container = (function(word, socketServer, isLocalResource){
+                return {
+                    letters : word.split(''),
+                    socketServer : socketServer,
+                    isLocalResource : isLocalResource === 'true'
+                };
+            })("#{word}", "#{socketServer}", "#{isLocalResource}");
     body
         div(id="container") != content    
-        script(src="/js/bundle.js")
+        script(src="/js/" + "#{source}")

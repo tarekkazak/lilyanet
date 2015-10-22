@@ -12,7 +12,7 @@
   },
   "homepage": "https://github.com/tarekkazak/lilyanet",
   "scripts": {
-    "start": "SOCKET_SERVER='http://lilyanet.com:3300'  PORT='80' node app/server.js"
+    "start": "ENVIRONMENT='PROD' SOCKET_SERVER='http://lilyanet.com:3300'  PORT='80' node app/server.js"
   },
   "dependencies": {
     "babel": "^5.8.21",
@@ -34,4 +34,5 @@
     "grunt-concurrent": "^2.0.2",
     "grunt-nodemon": "^0.4.0"
   }
+  
 }
