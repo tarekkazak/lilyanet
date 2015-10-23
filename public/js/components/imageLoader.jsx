@@ -1,30 +1,27 @@
 var React  = require('react/addons');
 import {_} from 'lodash';
 import {ImageServiceProvider} from '../service/imageServiceProvider.js';
-var imageServiceProvider = new ImageServiceProvider();
-var imageService;
-var images = (<div/>);
-var searchTerm = '';
-var foundImages = false;
-var style = {
-        visibility : 'hidden'
-    };
 
 
 export class ImageLoader extends React.Component {
     constructor(props) {
         super(props)
+        //TODO:make private
+        this.images = (<div/>);
+        this.foundImages = false;
+        this.searchTerm = '';
     }
 
      fetchImages() {
-        imageService = imageServiceProvider.get(this.props.local);
+        var imageServiceProvider = new ImageServiceProvider();
+        var imageService = imageServiceProvider.get(this.props.local);
 
         
         var searchComplete = (results) => {
             console.log(results);
             if(results && results.length) {
-                foundImages = true;
-                images = _.map(results, (item) =>{
+                this.foundImages = true;
+                this.images = _.map(results, (item) =>{
                     return (
                             <img key={item.url}width="200" height="200" src={item.url} />
                            );
@@ -34,9 +31,9 @@ export class ImageLoader extends React.Component {
             } 
         };
             
-        if(searchTerm !== this.props.word){
-            searchTerm = this.props.word; 
-            imageService.search(searchTerm).then(searchComplete);
+        if(this.searchTerm !== this.props.word){
+            this.searchTerm = this.props.word; 
+            imageService.search(this.searchTerm).then(searchComplete);
         }
 
     }
@@ -50,10 +47,12 @@ export class ImageLoader extends React.Component {
     }
 
     render() {
-        style.visibility = foundImages ? 'visible' : 'hidden';
-        foundImages = false;
+        var style = {
+            visibility : this.foundImages ? 'visible' : 'hidden'
+        };
+        this.foundImages = false;
         return (
-                <div style={style}>{images}</div>
+                <div style={style}>{this.images}</div>
                );
         
     }

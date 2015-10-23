@@ -1,11 +1,10 @@
 var express = require('express');
+import {LetterController} from './controller/letters/letters.js';
 var bodyParser = require('body-parser');
 var app = express();
 var server = require('http').Server(app);
 var io = require('socket.io')(3300);
-var LetterController = require('./controller/letters/letters.js');
 var letterRoutes = new LetterController(io).routes;
-var IO_EVENT = require('./common/events');
 
 console.log(__dirname + '/../public');
 app.use(bodyParser.json());
