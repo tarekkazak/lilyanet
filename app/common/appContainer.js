@@ -1,2 +1,9 @@
 import { DataModel } from '../../public/js/model/dataModel.js';
-export var model = new DataModel();
+
+class AppContainer {
+    constructor() {
+        this.model = new DataModel();
+    }
+}
+
+export var appContainer = new AppContainer();

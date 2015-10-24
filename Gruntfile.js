@@ -28,10 +28,11 @@ module.exports = function(grunt) {
             dev : {
                 script : 'app/server.js',
                 options : {
-                    watch : ['app'],
+                    watch : ['app', 'public/js'],
                     env : {
                         PORT : '5500',
-                        SOCKET_SERVER:'http://192.168.1.150:3300'
+                        SOCKET_SERVER:'http://192.168.1.150:3300',
+                        ENVIRONMENT : 'DEV'
                     }
                 }
             }

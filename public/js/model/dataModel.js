@@ -1,6 +1,6 @@
-var monad = require('folktale/control').monads;
-var Maybe = require('folktale/data').Maybe;
-var _ = require('lodash');
+import {monads} from 'folktale/control';
+import {Maybe} from 'folktale/data';
+import {_} from 'lodash';
 
 export class DataModel {
 
@@ -10,9 +10,9 @@ export class DataModel {
         this.letters = [];
         this.localImageUrl = '/images/';
         this.init();
-        this.wordDataCompose = _.compose(monad.chain(this.getWordData.bind(this)), 
-                monad.map((x) => x.toLowerCase()),
-                monad.map((x) => x.join ? x.join('') : x));
+        this.wordDataCompose = _.compose(monads.chain(this.getWordData.bind(this)), 
+                monads.map((x) => x.toLowerCase()),
+                monads.map((x) => x.join ? x.join('') : x));
     }
 
     init() {
@@ -22,6 +22,7 @@ export class DataModel {
     }
 
     getWords(mode) {
+        //TODO: lazy evaluate syllables and words once mode is determine
         var syllables = Array.from(this.dataMap.values()).map((x) => Maybe.fromNullable(x.syllables))
             .filter((x) => x.isJust)
             .map((x) => x.get());
@@ -31,7 +32,6 @@ export class DataModel {
     };
 
     containsWord(word) {
-        console.log('contains word', word);
         return !this.wordDataCompose(Maybe.of(word)).isNothing;
     };
 

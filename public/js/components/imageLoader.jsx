@@ -1,52 +1,59 @@
 var React  = require('react/addons');
-var _ = require('lodash');
+import {_} from 'lodash';
 import {ImageServiceProvider} from '../service/imageServiceProvider.js';
-var imageServiceProvider = new ImageServiceProvider();
-var imageService;
-var images = (<div/>);
-var searchTerm = '';
-var foundImages = false;
-var style = {
-        visibility : 'hidden'
-    };
 
-function fetchImages() {
-    var self = this;
-    imageService = imageServiceProvider.get(this.props.local);
 
-    
-    function searchComplete(results) {
-        console.log(results);
-        if(results && results.length) {
-            foundImages = true;
-            images = _.map(results, (item) =>{
-                return (
-                        <img key={item.url}width="200" height="200" src={item.url} />
-                       );
-            });
-
-            self.forceUpdate();
-        } 
+export class ImageLoader extends React.Component {
+    constructor(props) {
+        super(props)
+        //TODO:make private
+        this.images = (<div/>);
+        this.foundImages = false;
+        this.searchTerm = '';
     }
+
+     fetchImages() {
+        var imageServiceProvider = new ImageServiceProvider();
+        var imageService = imageServiceProvider.get(this.props.local);
+
         
-    if(searchTerm !== this.props.word){
-        searchTerm = this.props.word; 
-        imageService.search(searchTerm).then(searchComplete);
+        var searchComplete = (results) => {
+            console.log(results);
+            if(results && results.length) {
+                this.foundImages = true;
+                this.images = _.map(results, (item) =>{
+                    return (
+                            <img key={item.url}width="200" height="200" src={item.url} />
+                           );
+                });
+
+                this.forceUpdate();
+            } 
+        };
+            
+        if(this.searchTerm !== this.props.word){
+            this.searchTerm = this.props.word; 
+            imageService.search(this.searchTerm).then(searchComplete);
+        }
+
     }
 
-}
+    componentDidMount() {
+        this.fetchImages();
+    }
 
-var ImageLoader = React.createClass({
-    componentDidMount : fetchImages,
-    componentDidUpdate : fetchImages,
-    render : function() {
-        style.visibility = foundImages ? 'visible' : 'hidden';
-        foundImages = false;
+    componentDidUpdate() {
+        this.fetchImages();
+    }
+
+    render() {
+        var style = {
+            visibility : this.foundImages ? 'visible' : 'hidden'
+        };
+        this.foundImages = false;
         return (
-                <div style={style}>{images}</div>
+                <div style={style}>{this.images}</div>
                );
         
     }
-});
-
-module.exports = ImageLoader;
+}
