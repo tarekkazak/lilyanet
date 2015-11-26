@@ -1,5 +1,5 @@
 import {appContainer} from '../../common/appContainer.js';
-import {Word} from '../../../public/js/components/word.jsx';
+import {Word} from '../../components/word.jsx';
 import {_} from 'lodash';
 import {ioEvents as IO_EVENT} from '../../common/events.js';
 import {LetterGenerator} from'../../service/letterGeneratorService.js';

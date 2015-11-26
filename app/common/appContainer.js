@@ -1,8 +1,9 @@
-import { DataModel } from '../../public/js/model/dataModel.js';
+import { LilyaNet } from '../model/lilyanet.js';
+import { LilyaNetDao } from '../model/lilyanetDao.js';
 
 class AppContainer {
     constructor() {
-        this.model = new DataModel();
+        this.model = new LilyaNet(new LilyaNetDao());
     }
 }
 

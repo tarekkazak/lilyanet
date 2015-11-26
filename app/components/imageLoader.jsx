@@ -10,8 +10,11 @@ export class ImageLoader extends React.Component {
         this.images = (<div/>);
         this.foundImages = false;
         this.searchTerm = '';
+        this.componentDidMount = this.fetchImages;
+        this.componentDidUpdate = this.fetchImages; 
     }
 
+    //TODO: find clean way to encapsulate
      fetchImages() {
         var imageServiceProvider = new ImageServiceProvider();
         var imageService = imageServiceProvider.get(this.props.local);
@@ -38,13 +41,6 @@ export class ImageLoader extends React.Component {
 
     }
 
-    componentDidMount() {
-        this.fetchImages();
-    }
-
-    componentDidUpdate() {
-        this.fetchImages();
-    }
 
     render() {
         var style = {

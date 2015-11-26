@@ -1,5 +1,5 @@
 import {ioEvents as IO_EVENT} from '../../app/common/events';
-import {Word} from './components/word.jsx';
+import {Word} from '../../app/components/word.jsx';
 import {appContainer} from '../../app/common/appContainer.js';
 var io = require('socket.io-client')
 var socket = io(container.socketServer);

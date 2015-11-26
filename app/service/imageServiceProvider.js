@@ -1,6 +1,6 @@
 import { GoogleImageService } from './googleImageService.js'
 import { LocalImageService } from './localImageService.js'
-import { appContainer } from '../../../app/common/appContainer.js';
+import { appContainer } from '../common/appContainer.js';
 
 export class ImageServiceProvider {
 
