@@ -2,29 +2,41 @@ import {monads} from 'folktale/control';
 import {Maybe} from 'folktale/data';
 import {_} from 'lodash';
 
+let letters;
 export class LilyaNet {
 
     constructor(dao) {
         this.dao = dao;
         this.dataMap = new Map();
-        this.letters = [];
-        this.localImageUrl = '/images/';
-        this.init();
+        letters = [];
         this.wordDataCompose = _.compose(monads.chain(this.getWordData.bind(this)), 
                 monads.map((x) => x.toLowerCase()),
                 monads.map((x) => x.join ? x.join('') : x));
+
+        this.wordComplete = this.containsWord;
         //api for dao
         this.getSelectedWords =  this.dao.getWords({selected : true});
-        
+        this.getAllWords =  this.dao.getWords();
     }
 
     init() {
         this.dao.connect();
+        let words = this.getAllWords();
+        for(let word of words) {
+            this.dataMap.set(word.id, word);
+        }
+    }
+    
+    getLetters() {
+        return letters;
     }
 
+    addLetter(letter)  {
+        letters.push(letter);
+    }
+    
     selectWord(word) {
-        var wordData = this.getWordData(word);
-        wordData.map((x) => x.selected = true);
+        word.selected = true;
     }
 
     getWords(mode) {
@@ -48,19 +60,21 @@ export class LilyaNet {
 
 
     resetWord() {
-        this.letters = [];
+        letters = [];
     }
     
     getWordData(word) {
-        return Maybe.fromNullable(this.dataMap.get(word));
+        let wordData = Array.from(this.dataMap.values()).filter((x) => x.value === word);
+        console.log('wordData', wordData);
+        return Maybe.fromNullable(wordData[0]);
     }
 
-    isResourceLocal() {
+    isResourceLocal(word) {
         function getLocation(item) {
             return Maybe.fromNullable(item.location);
         }
 
-        return this.wordDataCompose(Maybe.of(this.letters))
+        return this.wordDataCompose(Maybe.of(word))
                 .chain(getLocation)
                 .chain((x) => x === 'local');
     }
@@ -68,10 +82,6 @@ export class LilyaNet {
     getSearchTerm(word) {
         return this.wordDataCompose(Maybe.of(word))
                 .chain((x) => x.searchTerm || word);
-    }
-
-    wordComplete(){
-        return this.containsWord(this.letters);
     }
 
 }

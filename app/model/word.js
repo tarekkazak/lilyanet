@@ -1,5 +1,5 @@
 export class Word {
-    constructor(value, syllables, location, searchTerm , selected = false) {
+    constructor(value, syllables, searchTerm, location = 'remote' , selected = false) {
         this.value = value;
         this.syllables = syllables;
         this.searchTerm = searchTerm;
