@@ -1,6 +1,6 @@
 export class LocalImageService {
 
-    constructor(model) {
+    constructor(private model) {
         this.model = model;
     }
 

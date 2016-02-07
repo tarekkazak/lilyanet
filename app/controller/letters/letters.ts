@@ -1,8 +1,9 @@
-import {appContainer} from '../../common/appContainer.js';
-import {Word} from '../../components/word.jsx';
+/// <reference path="../../../typings/tsd.d.ts" />
+import {appContainer} from '../../common/appContainer';
+import {Word} from '../../components/word';
 import {_} from 'lodash';
-import {ioEvents as IO_EVENT} from '../../common/events.js';
-import {LetterGenerator} from'../../service/letterGeneratorService.js';
+import {IOEvents as IO_EVENT} from '../../common/events';
+import {LetterGenerator} from'../../service/letterGeneratorService';
 var React = require('react/addons');
 
 export class LetterController {

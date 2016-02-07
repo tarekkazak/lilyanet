@@ -1,5 +1,5 @@
 export class MessageService {
-    constructor(io, socket) {
+    constructor(private io, private socket) {
         this.io = io;
         this.socket = socket;
     }

@@ -3,7 +3,7 @@ import {Maybe} from 'folktale/data';
 var React = require('react/addons');
 
 export class WordSelector extends React.Component {
-    constructor(props) {
+    constructor(public props) {
         super(props);
     }
 

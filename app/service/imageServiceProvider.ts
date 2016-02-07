@@ -1,8 +1,10 @@
-import { GoogleImageService } from './googleImageService.js'
-import { LocalImageService } from './localImageService.js'
-import { appContainer } from '../common/appContainer.js';
+import { GoogleImageService } from './googleImageService'
+import { LocalImageService } from './localImageService'
+import { appContainer } from '../common/appContainer';
 
 export class ImageServiceProvider {
+    private googleImageService;
+    private localImageService;
 
     constructor() {
         this.googleImageService = new GoogleImageService(appContainer.model);

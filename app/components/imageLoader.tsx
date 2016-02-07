@@ -1,10 +1,17 @@
 var React  = require('react/addons');
-import {_} from 'lodash';
-import {ImageServiceProvider} from '../service/imageServiceProvider.js';
+import  'lodash';
+import {ImageServiceProvider} from '../service/imageServiceProvider';
 
 
 export class ImageLoader extends React.Component {
-    constructor(props) {
+    private searchTerm;
+    private foundImages;
+    private images;
+    private componentDidMount;
+    private componentDidUpdate;
+    public forceUpdate;
+
+    constructor(public props:any) {
         super(props)
         //TODO:make private
         this.images = (<div/>);

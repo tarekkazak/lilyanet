@@ -1,9 +1,8 @@
+'use strict';
 var sinon = require('sinon');
-require('jasmine-sinon');
-var mongoose = require('mongoose')
-import {Word} from '../app/model/word.js';
-import {LilyaNet} from '../app/model/lilyanet.js';
-import {LilyaNetDao} from '../app/model/lilyanetDao.js';
+//require('jasmine-sinon'); doesn't work with grunt-jasmine-nodejs
+import {LilyaNet} from '../app/model/lilyanet';
+import {LilyanetDao} from '../app/model/lilyanetDao';
 
 describe('lilyanet model tests', () => {
     let model, dao;
@@ -16,23 +15,20 @@ describe('lilyanet model tests', () => {
         };
 
     beforeEach(() => {
-        dao = new LilyaNetDao();
+        dao = new LilyanetDao();
+        model = new LilyaNet(dao);
+        console.log('log')
     });
 
 
     describe('back end connection tests', () => {
-        it('should connect to database on init and fetch words and set dataMap', () => {
+        it('should connect to database on init', () => {
             dao.connect = sinon.spy();
-            dao.getWords = sinon.stub();
-            let word = {id : 1, value : 'word'};
-            dao.getWords.returns(() => [word]);
-            model = new LilyaNet(dao);
             model.init();
-            expect(dao.connect).toHaveBeenCalledOnce();
-            expect(model.dataMap.get(1)).toBe(word);
+            sinon.assert.calledOnce(dao.connect);
         });
 
-        it('should get a data set from getSelectedWords', () => {
+        it('should get a data set from getAllWords', () => {
             var obj = {};
             dao.getWords = sinon.stub();
             dao.getWords.returns(() => obj );
@@ -60,17 +56,16 @@ describe('lilyanet model tests', () => {
             model = new LilyaNet(dao);
         });
 
-        it('should set word.selected to true on selectdWord', () => {
-            var word = new Word('word', [], 'word', 'word');
-            expect(word.selected).toBeFalsy();
-            model.selectWord(word);
-            expect(word.selected).toBeTruthy();
+        xit('should set word.selected to true on selectdWord', () => {
+        //var word = new Word('word', [], 'word', 'word');
+        //   expect(word.selected).toBeFalsy();
+        //  model.selectWord(word);
+        //  expect(word.selected).toBeTruthy();
         });
 
         it('should return true if contains word, false if not', () => {
             model.getAllWords = sinon.stub();
             model.getAllWords.returns([{id:'id', value : 'chat'}]);
-            model.init();
             expect(model.containsWord('chat')).toBeTruthy();
             expect(model.containsWord('chien')).toBeFalsy();
             
@@ -86,7 +81,6 @@ describe('lilyanet model tests', () => {
             let word = {id:'id', value : 'chat'};
             model.getAllWords = sinon.stub();
             model.getAllWords.returns([word]);
-            model.init();
             let result = model.getWordData('chat').get();
             expect(result).toBe(word);
         });
@@ -102,7 +96,6 @@ describe('lilyanet model tests', () => {
             let word = {id:'id', value : 'chat', searchTerm : 'chat blanc'};
             model.getAllWords = sinon.stub();
             model.getAllWords.returns([word]);
-            model.init();
             expect(model.getSearchTerm('chat')).toEqual('chat blanc');
 
         });
@@ -121,7 +114,6 @@ describe('lilyanet model tests', () => {
             let chien = {id:'id2', value : 'chien', location : 'local'};
             model.getAllWords = sinon.stub();
             model.getAllWords.returns([chat, chien]);
-            model.init();
             expect(model.isResourceLocal('chat')).toBeFalsy();            
             expect(model.isResourceLocal('chien')).toBeTruthy();            
         });
@@ -129,12 +121,33 @@ describe('lilyanet model tests', () => {
         it('should return true if word is complete on wordComplete() false if not', () => {
             model.getAllWords = sinon.stub();
             model.getAllWords.returns([{id:'id', value : 'chat'}]);
-            model.init();
             expect(model.wordComplete('chat')).toBeTruthy();
             expect(model.wordComplete('cha')).toBeFalsy();
         });
 
-        it('should return all selected words');
-        it('should return all selected syllables');
+        it('should return all selected words', () => {
+            let chat = {selected : true, id:'id1', value : 'chat', location : 'remote'};
+            let chien = { id:'id2', value : 'chien', location : 'local'};
+            model.getAllWords = sinon.stub();
+            model.getAllWords.returns([chat, chien]);
+            let result = model.getWordList();
+            expect(result.length).toEqual(1);
+            expect(result[0]).toBe('chat');
+        });
+
+        it('should return all selected syllables', () => {
+            let cheval = {selected : true, id:'id1', value : 'cheval', syllables : ['che', 'val'], location : 'remote'};
+            let chien = { selected:true, id:'id2', syllables: ['chien'], value : 'chien', location : 'local'};
+            let koala = { id:'id3', syllables: ['ko', 'a', 'la'], value : 'chien', location : 'local'};
+            model.getAllWords = sinon.stub();
+            model.getAllWords.returns([cheval, chien]);
+            let result = model.getSyllablesList();
+            expect(result.length).toEqual(2);
+            expect(result[0].length).toEqual(2);
+            expect(result[0][0]).toBe('che');
+            expect(result[0][1]).toBe('val');
+            expect(result[1].length).toEqual(1);
+            expect(result[1][0]).toBe('chien');
+        });
     });
 });

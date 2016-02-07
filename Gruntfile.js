@@ -2,11 +2,11 @@ module.exports = function(grunt) {
     grunt.initConfig( {
         watch : {
             tests : {
-                files : './**/*.js',
-                tasks : ['karma:tests'],
+                files : ['tests/*.spec.ts', 'app/**/*.ts', 'app/**/*.tsx'],
+                tasks : ['ts:tests', 'jasmine_nodejs:tests'],
                 options : {
-                    spawn : false,
-                    interrupt : true
+                    interrupt : false,
+                    atBegin : true
                 }
             }
         },
@@ -29,13 +29,8 @@ module.exports = function(grunt) {
                 options : {
                     watch : true,
                     keepAlive : true,
-                    transform :[ 
-                        ['babelify', 
-                            {
-                                presets : ['react', 'es2015']
-                            }
-                        ]
-                    ]
+                    extensions : ['.js', '.jsx'],
+                    transform :['babelify' ]
                 }
             },
             prod : {
@@ -43,9 +38,7 @@ module.exports = function(grunt) {
                     'public/js/bundle.js' :['public/js/app.jsx']
                 },
                 options : {
-                    transform :[ 
-                        ['babelify', {presets : ['react', 'es2015']}]
-                    ]
+                    transform :['babelify' ]
                 }
             }
         },
@@ -62,39 +55,46 @@ module.exports = function(grunt) {
                 }
             }
         },
+        jasmine_nodejs: {
+            tests : {
+                specs : [ 
+                    'tests/**'
+                     ]
+            }
+        },
         karma : {
             tests : {
                 basePath : './',
-                preprocessors : {
-                    'tests/*.js': ['browserify'],
-                    'app/common/*.js': ['browserify', 'coverage'],
-                    'app/components/*.js': ['browserify', 'coverage'],
-                    'app/model/*.js': ['browserify', 'coverage'],
-                    'app/service/*.js': ['browserify', 'coverage']
-                },
+                //preprocessors : {
+                   // 'app/common/**/*.ts': ['browserify', 'coverage'],
+                   // 'app/service/**/*.ts': ['browserify', 'coverage'],
+                   // 'app/model/**/*.ts': ['browserify', 'coverage'],
+                   // 'tests/**/*.ts': ['browserify']
+               // },
                 browserify : {
                     debug : true,
-                    transform : ['babelify']
+                    transform :[ 
+                        [
+                            'tsify', 
+                        ]
+                    ]
                 },
                 files : [
                     {
                         src : [ 
-                            'node_modules/babel-polyfill/dist/polyfill.js',
-                            'tests/*.js',
-                            'app/common/*.js',
-                            'app/components/*.js',
-                            'app/model/*.js',
-                            'app/service/*.js'
+                            'tests/**/*.js',
+                            'app/common/**/*.js',
+                            'app/model/**/*.js'
                             ]
                      }
                 ],
                 logLevel : 'INFO',
                 reporters :['spec', 'coverage'],
-                browsers : ['PhantomJS'],
-                //browsers : ['Chrome'],
-                singleRun : false,
+                //browsers : ['PhantomJS'],
+                browsers : ['Chrome'],
+                singleRun : true,
                 autoWatch : true,
-                frameworks : ['jasmine', 'browserify'],
+                frameworks : ['jasmine'],
                 coverageReporter : {
                     type : 'html',
                     dir : 'coverage/'
@@ -110,6 +110,24 @@ module.exports = function(grunt) {
                 }
             }
 
+        },
+        ts : {
+            options : {
+                module : 'commonjs',
+                jsx : 'react',
+                fast : 'never',
+                target : 'es6',
+                experimentalDecorators:true
+            },
+            dev : {
+                src : ['app/**/*.ts', 'app/**/*.jsx']
+            },
+            prod : {
+
+            },
+            tests : {
+                src : ['app/model/*.ts', 'tests/**/*.spec.ts']
+            }
         },
         uglify: {
             prod : {
@@ -128,11 +146,11 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-browserify');
     grunt.loadNpmTasks('grunt-concurrent');
     grunt.loadNpmTasks('grunt-contrib-watch');
+    grunt.loadNpmTasks('grunt-jasmine-nodejs');
     grunt.loadNpmTasks('grunt-nodemon');
-    grunt.loadNpmTasks('grunt-sass');
-    grunt.loadNpmTasks('grunt-karma');
+    grunt.loadNpmTasks('grunt-ts');
     grunt.loadNpmTasks('grunt-contrib-uglify');
-    grunt.registerTask('tests', ['karma:tests']);
+    grunt.registerTask('tests', ['ts:tests', 'jasmine_nodejs:tests']);
     grunt.registerTask('dev', ['concurrent']);
     grunt.registerTask('prod', ['browserify:prod', 'uglify:prod']);
 };

@@ -1,13 +1,16 @@
 import {monads} from 'folktale/control';
 import {Maybe} from 'folktale/data';
-import {ImageLoader} from './imageLoader.jsx';
+import {ImageLoader} from './imageLoader';
 import {_} from 'lodash';
-import {Letter} from './letter.jsx';
-import {WordSelector} from './wordSelector.jsx';
+import {Letter} from './letter';
+import {WordSelector} from './wordSelector';
 var React = require('react/addons');
 
 export class Word extends React.Component {
-    constructor(props) {
+    public state;
+    public refs;
+
+    constructor(private props) {
         super(props);
         this.state = {
             letters : props.letters,

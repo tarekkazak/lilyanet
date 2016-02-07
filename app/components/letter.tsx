@@ -1,7 +1,7 @@
 var React = require('react/addons');
 
 export class Letter extends React.Component {
-    constructor(props) {
+    constructor(public props) {
         super(props);
     }
 

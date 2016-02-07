@@ -1,5 +1,8 @@
 export class GoogleImageService {
-    constructor(model) {
+    private promise:any; 
+    private google;
+
+    constructor(private model) {
         this.model = model;
         this.promise = new Promise((resolve, reject) => {
             
@@ -10,9 +13,9 @@ export class GoogleImageService {
                 resolve(imageSearch);
             }
             
-            if(google) {
-                google.load('search', '1', {language:'fr'});
-                google.setOnLoadCallback(OnLoad);
+            if(this.google) {
+                this.google.load('search', '1', {language:'fr'});
+                this.google.setOnLoadCallback(OnLoad);
             }
         });
     }

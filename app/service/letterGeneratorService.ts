@@ -1,9 +1,11 @@
-import {ioEvents as IO_EVENT} from '../common/events';
-import { MessageService } from './messageService.js';
+import {IOEvents as IO_EVENT} from '../common/events';
+import { MessageService } from './messageService';
 
 export class LetterGenerator {
     
-    constructor(model, io, socket, mode = 'default') {
+    private mode;
+
+    constructor(model, io, socket:Socket, mode = 'default') {
         this.mode = mode;
         this.init(io, model, socket);
     }
