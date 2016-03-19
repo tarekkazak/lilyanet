@@ -1,1 +1,1 @@
-require('./lilyanet.js');
+require('./index');

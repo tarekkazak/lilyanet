@@ -1,6 +1,6 @@
 /// <reference path="../../typings/tsd.d.ts" />
-'use strict';
 var mongoose = require('mongoose');
+import {LilyaNet} from '../model/lilyanet';
 
 var daoDecorator = function(mongoose) {
     return function(target:any, key:string)  {
@@ -43,8 +43,9 @@ let wordSchema = new mongoose.Schema({
 export var Word = mongoose.model('Word', wordSchema);
 
 class AppContainer {
-    public model:any;
+    public model:LilyaNet;
     constructor() {
+        this.model = new LilyaNet();
     }
 
 }

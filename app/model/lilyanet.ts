@@ -3,6 +3,7 @@ var monads = require('folktale/control').monads;
 var Maybe = require('folktale/data').Maybe;
 var _ = require('lodash');
 import {Utils} from '../common/utils';
+import {LilyanetDao} from 'lilyanetDao';
 
 export class LilyaNet {
 
@@ -12,8 +13,10 @@ export class LilyaNet {
     private getAllWords;
     private wordDataCompose;
     private wordComplete;
+    private dao:LilyanetDao;
 
-    constructor(private dao) {
+    constructor() {
+        this.dao = new LilyanetDao();
         this.letters = [];
 
         this.getSelectedItems = (prop) => _.compose(monads.map((x) => x.get()), 

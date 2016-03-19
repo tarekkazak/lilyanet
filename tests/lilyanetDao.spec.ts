@@ -33,5 +33,7 @@ describe('lilyanetDao tests', () => {
             done();
         }, 20);
     });
-    it('should get words dataset');
+    it('should get words dataset', () => {
+        
+    });
 });

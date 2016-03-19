@@ -1,6 +1,5 @@
 /// <reference path="../../../typings/tsd.d.ts" />
 import {appContainer} from '../../common/appContainer';
-import {Word} from '../../components/word';
 import {_} from 'lodash';
 import {IOEvents as IO_EVENT} from '../../common/events';
 import {LetterGenerator} from'../../service/letterGeneratorService';
@@ -12,24 +11,15 @@ export class LetterController {
     }
 
     init(io) {
-        var WordFac = React.createFactory(Word), 
-            isSlideshow,
+        let isSlideshow,
             model = appContainer.model,
             mode = '',
             connectionsMap = new WeakMap();
 
         function defaultRender(req, res) {
-            var content = React.renderToString(WordFac({
-                letters : model.letters,
-                words : model.getWords(),
-                isLocalResource : false
-            }));
 
             res.render('index', {
-                content : content,
-                word : '',
-                isLocalResource : false,
-                source : process.env.ENVIRONMENT === 'DEV' ? 'bundle.js' : 'bundle.min.js',
+                source : process.env.ENVIRONMENT === 'DEV' ? 'lilyanet.js' : 'lilyanet.min.js',
                 socketServer : process.env.SOCKET_SERVER
             });
         }
@@ -37,7 +27,7 @@ export class LetterController {
         io.on('connection', (socket) => {
             console.log('connected', socket.id);
             if(isSlideshow) {
-                connectionsMap.set(socket, new LetterGenerator(model, io, socket, mode));
+                connectionsMap.set(socket, new LetterGenerator(model, io, socket, mode).init());
             }
 
             socket.on('disconnect', () => {
@@ -87,18 +77,6 @@ export class LetterController {
                         //console.log('letters', model.letters);
                         console.log('is local resource', isLocalResource);
 
-                        content = React.renderToString(WordFac({
-                            letters : model.letters,
-                            words : model.getWords(),
-                            isLocalResource : isLocalResource
-                        }));
-
-                        res.render('index', {
-                            content : content,
-                            word : model.letters.join(''),
-                            source : process.env.ENVIRONMENT === 'DEV' ? 'bundle.js' : 'bundle.min.js',
-                            isLocalResource : isLocalResource
-                        });
                     }]
                 },
                 {

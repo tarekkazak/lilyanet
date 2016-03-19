@@ -5,14 +5,15 @@ export class LetterGenerator {
     
     private mode;
 
-    constructor(model, io, socket:Socket, mode = 'default') {
-        this.mode = mode;
-        this.init(io, model, socket);
+    constructor(private model, private io, private socket:Socket, private mode = 'default') {
     }
 
 
-    init(io, model, socket) {
-        var messageService;
+    init() {
+        var messageService,
+            io = this.io, 
+            model = this.model, 
+            socket = this.socket;
 
         function* generateLetter(words) {
             console.log('generate letter');

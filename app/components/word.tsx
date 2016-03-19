@@ -13,9 +13,9 @@ export class Word extends React.Component {
     constructor(private props) {
         super(props);
         this.state = {
-            letters : props.letters,
-            words : props.words,
-            isLocalResource : props.isLocalResource
+            letters : [],
+            words : [],
+            isLocalResource : false
         };
     }
 

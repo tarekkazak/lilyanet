@@ -6,13 +6,11 @@ html
         link(rel='stylesheet', href='/stylesheets/main.css')
         script(src="https://www.google.com/jsapi")
         script.
-            var container = (function(word, socketServer, isLocalResource){
+            var container = (function(socketServer){
                 return {
-                    letters : word.split(''),
                     socketServer : socketServer,
-                    isLocalResource : isLocalResource === 'true'
                 };
-            })("#{word}", "#{socketServer}", "#{isLocalResource}");
+            })("#{socketServer}");
     body
         div(id="container") != content    
         script(src="/js/" + "#{source}")
