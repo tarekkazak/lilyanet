@@ -76,6 +76,9 @@
     },
     "mongoose-mock/mongoose-mock.d.ts": {
       "commit": "1da639a106527e0c4010b354a1efe52a3059a291"
+    },
+    "js-signals/js-signals.d.ts": {
+      "commit": "6766ed1d0faf02ede9e2edf2e66bbb2388c825ec"
     }
   }
 }

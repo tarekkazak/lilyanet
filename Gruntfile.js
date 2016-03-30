@@ -1,6 +1,27 @@
 module.exports = function(grunt) {
     grunt.initConfig( {
         watch : {
+            options : {
+                reload:true
+            },
+            server : {
+                files : ['app/common/**/*.ts','app/core/**/*.ts', 'server.js'],
+                tasks : ['ts:server'],
+                options : {
+                    interrupt : false,
+                    atBegin : true,
+                    spawn:false
+                }
+            },
+            dev : {
+                files : ['app/common/**/*.ts','app/presentation/**/*.ts', 'app/presentation/**/*.tsx'],
+                tasks : ['ts:ui', 'browserify:dev'],
+                options : {
+                    interrupt : false,
+                    atBegin : true,
+                    spawn:false
+                }
+            },
             tests : {
                 files : ['tests/*.spec.ts', 'app/**/*.ts', 'app/**/*.tsx'],
                 tasks : ['ts:tests', 'jasmine_nodejs:tests'],
@@ -24,13 +45,7 @@ module.exports = function(grunt) {
         browserify : {
             dev : {
                 files : {
-                    'public/js/bundle.js' :['public/js/app.jsx']
-                },
-                options : {
-                    watch : true,
-                    keepAlive : true,
-                    extensions : ['.js', '.jsx'],
-                    transform :['babelify' ]
+                    'public/js/lilyanet.js' :['app/presentation/lilyanet.js']
                 }
             },
             prod : {
@@ -46,10 +61,11 @@ module.exports = function(grunt) {
             dev : {
                 script : 'app/server.js',
                 options : {
+                    //nodeArgs : ['--debug-brk'],
                     watch : ['app'],
                     env : {
                         PORT : '5500',
-                        SOCKET_SERVER:'http://192.168.1.150:3300',
+                        SOCKET_SERVER:'http://192.168.1.107:3300',
                         ENVIRONMENT : 'DEV'
                     }
                 }
@@ -103,7 +119,7 @@ module.exports = function(grunt) {
         },
         concurrent : {
             dev : {
-                tasks : ['browserify:dev', 'nodemon:dev', 'sass:dev'],
+                tasks : ['watch:dev','watch:server', 'nodemon:dev', 'sass:dev'],
                 options : {
                     logConcurrentOutput : true,
                     limit:4
@@ -111,16 +127,26 @@ module.exports = function(grunt) {
             }
 
         },
+        babel : {
+
+        },
         ts : {
             options : {
                 module : 'commonjs',
                 jsx : 'react',
                 fast : 'never',
-                target : 'es6',
-                experimentalDecorators:true
+                experimentalDecorators:true,
+                target : 'es6'
             },
-            dev : {
-                src : ['app/**/*.ts', 'app/**/*.jsx']
+            server : {
+                src : ['app/index.ts', 'app/core/**/*.ts',  'app/common/**/*.ts'],
+                options : {
+                    sourceMap : false 
+                }
+
+            },
+            ui : {
+                src : ['app/presentation/**/*.ts', 'app/presentation/**/*.tsx', 'app/common/**/*.ts']
             },
             prod : {
 
@@ -148,7 +174,9 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-contrib-watch');
     grunt.loadNpmTasks('grunt-jasmine-nodejs');
     grunt.loadNpmTasks('grunt-nodemon');
+    grunt.loadNpmTasks('grunt-sass');
     grunt.loadNpmTasks('grunt-ts');
+//    grunt.loadNpmTasks('grunt-babel');
     grunt.loadNpmTasks('grunt-contrib-uglify');
     grunt.registerTask('tests', ['ts:tests', 'jasmine_nodejs:tests']);
     grunt.registerTask('dev', ['concurrent']);
