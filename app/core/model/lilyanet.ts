@@ -1,21 +1,28 @@
-'use strict';
 var monads = require('folktale/control').monads;
 var Maybe = require('folktale/data').Maybe;
 var _ = require('lodash');
-import {Utils} from '../common/utils';
-import {LilyanetDao} from 'lilyanetDao';
+import {Utils} from '../../common/utils';
+import {LetterGenerator} from '../service/letterGeneratorService';
+import {LilyanetDao} from './lilyanetDao';
+import {IOEvents as IO_EVENT} from '../../common/events';
+import {messageService} from '../../common/appContainer';
 
 export class LilyaNet {
 
+    
     private letters;
     private getSelectedItems;
     private getSelectedWords;
     private getAllWords;
     private wordDataCompose;
     private wordComplete;
-    private dao:LilyanetDao;
+    private dao;
 
-    constructor() {
+    @messageService
+    public messageService;
+
+
+    constructor(private mode) {
         this.dao = new LilyanetDao();
         this.letters = [];
 
@@ -33,11 +40,30 @@ export class LilyaNet {
         this.wordComplete = this.containsWord;
         //api for dao
         this.getSelectedWords =  this.dao.getWords({selected : true});
-        this.getAllWords =  this.dao.getWords();
+        this.getAllWords =  this.dao.getWords(undefined);
+
     }
 
     init() {
-        this.dao.connect();
+        this.dao.connect().then(() => {
+            let generator = new LetterGenerator(this, this.mode).init();
+            return this.getAllWords();
+        }).then((words) => {
+            this.messageService.sendMessage(IO_EVENT.WORD_LIST_UPDATED, words);
+        });
+
+        this.messageService.on(IO_EVENT.ADD_WORD, (word) => {
+            console.log('on add word');
+            this.addWord(word); 
+        });
+
+        this.messageService.on(IO_EVENT.SELECT_WORD, (word) => {
+            this.selectWord(word); 
+        });
+
+        this.messageService.on(IO_EVENT.DELETE_WORD, (word) => {
+            this.deleteWord(word); 
+        });
     }
     
     getLetters() {
@@ -48,8 +74,39 @@ export class LilyaNet {
         this.letters.push(letter);
     }
     
+    deleteWord(word) {
+        console.log('select word', word);
+        this.dao.findById(word._id).then((word) => {
+            return word.remove();
+        }).then(() => {
+            return this.getAllWords();
+        }).then((words) => {
+            console.log('words after selecting word', words)
+            this.messageService.sendMessage(IO_EVENT.WORD_LIST_UPDATED, words);
+        });
+    }
+
     selectWord(word) {
-        word.selected = true;
+        console.log('select word', word);
+        this.dao.findById(word._id).then((word) => {
+            word.selected = !word.selected;
+            return this.dao.save(word);
+        }).then(() => {
+            return this.getAllWords();
+        }).then((words) => {
+            console.log('words after selecting word', words)
+            this.messageService.sendMessage(IO_EVENT.WORD_LIST_UPDATED, words);
+        });
+    }
+
+    addWord(word) {
+        console.log('add word', word);
+        this.dao.addWord(word).then(() => {
+            return this.getAllWords();
+        }).then((words) => {
+            console.log('all words after add', words)
+            this.messageService.sendMessage(IO_EVENT.WORD_LIST_UPDATED, words);
+        });
     }
 
     getSyllablesList() {

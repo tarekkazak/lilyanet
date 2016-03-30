@@ -1,5 +1,5 @@
 'use strict';
-import { dao } from '../common/appContainer';
+import { dao } from '../../common/appContainer';
 export class Word {
 
     @dao

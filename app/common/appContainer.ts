@@ -1,9 +1,38 @@
 /// <reference path="../../typings/tsd.d.ts" />
-var mongoose = require('mongoose');
-import {LilyaNet} from '../model/lilyanet';
 
-var daoDecorator = function(mongoose) {
+export var messageBus;
+export function registerSocket(socket) {
+    messageBus = socketDecorator(socket);
+}
+
+function socketDecorator(socket) {
     return function(target:any, key:string)  {
+        //property value
+        var _val = socket;
+        
+        // property getter
+        var getter = function () {
+            return _val;
+        };
+    
+        // Delete property.
+        if (delete target[key]) {
+                                       
+            // Create new property with getter and setter
+            Object.defineProperty(target, key, {
+                get: getter,
+                enumerable: true,
+                configurable: true
+            });
+        }
+    };
+
+}
+
+export function init(socket, io, mode) {
+    var mongoose = require('mongoose');
+
+    exports.dao =  function(target:any, key:string)  {
         //property value
         var _val = mongoose;
         
@@ -29,25 +58,41 @@ var daoDecorator = function(mongoose) {
             });
         }
     };
+
+    let wordSchema = new mongoose.Schema({
+        value : String,
+        syllables : Array,
+        searchTerm : String,
+        location : String,
+        selected : Boolean
+    });
+
+    exports.Word = mongoose.model('Word', wordSchema);
+
+    var MessageService = require('../core/service/messageService').MessageService;
+    var msgService = new MessageService(socket, io);
+    exports.messageService = function(target:any, key:string)  {
+        //property value
+        var _val = msgService;
+        
+        // property getter
+        var getter = function () {
+            return _val;
+        };
+    
+        // Delete property.
+        if (delete target[key]) {
+                                       
+            // Create new property with getter and setter
+            Object.defineProperty(target, key, {
+                get: getter,
+                enumerable: true,
+                configurable: true
+            });
+        }
+    };
+    var LilyaNet = require('../core/model/lilyanet').LilyaNet;
+    var lilyaNet = new LilyaNet(mode);
+    lilyaNet.init();
+    return lilyaNet;
 }
-
-export var dao = daoDecorator(mongoose);
-
-let wordSchema = new mongoose.Schema({
-    value : String,
-    syllables : Array,
-    searchTerm : String,
-    location : String,
-    selected : Boolean
-});
-export var Word = mongoose.model('Word', wordSchema);
-
-class AppContainer {
-    public model:LilyaNet;
-    constructor() {
-        this.model = new LilyaNet();
-    }
-
-}
-
-export var appContainer = new AppContainer();

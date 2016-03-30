@@ -1,14 +1,14 @@
-export class GoogleImageService {
+import {IImageService} from './IImageService';
+export class GoogleImageService implements IImageService {
     private promise:any; 
-    private google;
+    private google:any;
 
-    constructor(private model) {
-        this.model = model;
+    constructor() {
         this.promise = new Promise((resolve, reject) => {
             
             function OnLoad() {
                 // Create an Image Search instance.
-                var imageSearch = new google.search.ImageSearch();
+                var imageSearch = new this.google.search.ImageSearch();
                 imageSearch.setResultSetSize(8);
                 resolve(imageSearch);
             }
@@ -35,9 +35,7 @@ export class GoogleImageService {
 
                 imageSearch.setSearchCompleteCallback(self, searchComplete, null);
                 
-                if(this.model.containsWord(searchTerm)) {
-                    imageSearch.execute(this.model.getSearchTerm(searchTerm));
-                }
+                imageSearch.execute(searchTerm);
                 
             });
 

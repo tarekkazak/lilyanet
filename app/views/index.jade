@@ -4,7 +4,6 @@ html
         meta(charset="UTF-8")
         title
         link(rel='stylesheet', href='/stylesheets/main.css')
-        script(src="https://www.google.com/jsapi")
         script.
             var container = (function(socketServer){
                 return {
@@ -12,5 +11,12 @@ html
                 };
             })("#{socketServer}");
     body
-        div(id="container") != content    
+        div(class="container-fluid") != content    
+            div(class="row")
+                div(id="word-container", class="col-md-12") 
+            div(class="row")
+                div(id="image-container", class="col-md-12") 
+            div(class="row")
+                div(id="word-selector-container", class="col-md-12") 
+
         script(src="/js/" + "#{source}")

@@ -1,5 +1,5 @@
 var express = require('express');
-import {LetterController} from './controller/letters/letters';
+import {LetterController} from './core/controller/letters/letters';
 var bodyParser = require('body-parser');
 var app = express();
 var server = require('http').Server(app);

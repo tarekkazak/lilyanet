@@ -1,18 +1,18 @@
-/// <reference path="../../../typings/tsd.d.ts" />
-import {appContainer} from '../../common/appContainer';
-import {_} from 'lodash';
-import {IOEvents as IO_EVENT} from '../../common/events';
-import {LetterGenerator} from'../../service/letterGeneratorService';
-var React = require('react/addons');
+/// <reference path="../../../../typings/tsd.d.ts" />
+import _ =  require('lodash');
+import {IOEvents as IO_EVENT} from '../../../common/events';
+import {init} from '../../../common/appContainer';
 
 export class LetterController {
+    
+    public routes;
+
     constructor(io) {
         this.init(io);
     }
 
     init(io) {
         let isSlideshow,
-            model = appContainer.model,
             mode = '',
             connectionsMap = new WeakMap();
 
@@ -25,9 +25,9 @@ export class LetterController {
         }
     
         io.on('connection', (socket) => {
-            console.log('connected', socket.id);
+            console.log('socket connected', socket.id);
             if(isSlideshow) {
-                connectionsMap.set(socket, new LetterGenerator(model, io, socket, mode).init());
+                connectionsMap.set(socket, init(socket, io, mode));
             }
 
             socket.on('disconnect', () => {
@@ -62,19 +62,12 @@ export class LetterController {
                     get : [
                         (req, res, next) => {
                             //before processing next request, check if word is already complete
-                            if(model.wordComplete()) {
-                                model.resetWord();
-                            }
                             next();
                     }, (req, res) => {
                         var content,
                             isLocalResource = false;
-                        model.letters.push(req.query.letter);
 
                         console.log(req.query);
-                        
-                        isLocalResource = model.isResourceLocal();
-                        //console.log('letters', model.letters);
                         console.log('is local resource', isLocalResource);
 
                     }]
@@ -84,10 +77,6 @@ export class LetterController {
                     post : (req, res) => {
                         var letterData = req.body,
                             letter = letterData.case === 'upper' ? letterData.character.toUpperCase() :  letterData.character;
-                        if(letter.first) {
-                            lettersForWord = [];
-                        }
-                        lettersForWord.push(letter);
                         io.emit(IO_EVENT.WORD_UPDATED);
                     }
                 }
