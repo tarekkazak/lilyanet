@@ -11,6 +11,9 @@ export class WordSelectorMediator extends AbstractMediator {
         component.selectWordSignal = new Signal();
         component.selectWordSignal.add(this.onSelectWord.bind(this));
 
+        component.updateWordSignal = new Signal();
+        component.updateWordSignal.add(this.onUpdateWord.bind(this));
+
         component.deleteWordSignal = new Signal();
         component.deleteWordSignal.add(this.onDeleteWord.bind(this));
 
@@ -27,6 +30,10 @@ export class WordSelectorMediator extends AbstractMediator {
 
     private onDeleteWord(word) {
         this.messageBus.emit(IO_EVENT.DELETE_WORD, word);
+    }
+
+    private onUpdateWord(word) {
+        this.messageBus.emit(IO_EVENT.UPDATE_WORD, word);
     }
 
     private updateView(payload) {

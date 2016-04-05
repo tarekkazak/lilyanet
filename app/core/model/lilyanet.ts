@@ -52,6 +52,11 @@ export class LilyaNet {
             this.messageService.sendMessage(IO_EVENT.WORD_LIST_UPDATED, words);
         });
 
+        this.messageService.on(IO_EVENT.UPDATE_WORD, (word) => {
+            console.log('on update word');
+            this.updateWord(word); 
+        });
+
         this.messageService.on(IO_EVENT.ADD_WORD, (word) => {
             console.log('on add word');
             this.addWord(word); 
@@ -75,13 +80,27 @@ export class LilyaNet {
     }
     
     deleteWord(word) {
-        console.log('select word', word);
+        console.log('delete word', word);
         this.dao.findById(word._id).then((word) => {
             return word.remove();
         }).then(() => {
             return this.getAllWords();
         }).then((words) => {
-            console.log('words after selecting word', words)
+            this.messageService.sendMessage(IO_EVENT.WORD_LIST_UPDATED, words);
+        });
+    }
+
+    updateWord(word) {
+        console.log('update word', word);
+        this.dao.findById(word._id).then((w) => {
+            for(let key in word) {
+                w[key] = word[key]
+            }
+            console.log('update word model', w);
+            return this.dao.save(w);
+        }).then(() => {
+            return this.getAllWords();
+        }).then((words) => {
             this.messageService.sendMessage(IO_EVENT.WORD_LIST_UPDATED, words);
         });
     }
@@ -94,7 +113,6 @@ export class LilyaNet {
         }).then(() => {
             return this.getAllWords();
         }).then((words) => {
-            console.log('words after selecting word', words)
             this.messageService.sendMessage(IO_EVENT.WORD_LIST_UPDATED, words);
         });
     }

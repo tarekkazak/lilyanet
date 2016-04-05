@@ -1,4 +1,13 @@
 declare var container:any;
+declare global {
+    interface Window {
+        jQuery:any;
+        $:any;
+    }
+}
+
+window.$ = window.jQuery = require('jquery');
+
 var io = require('socket.io-client')
 var socket = io(container.socketServer);
 

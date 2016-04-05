@@ -14,8 +14,8 @@ module.exports = function(grunt) {
                 }
             },
             dev : {
-                files : ['app/common/**/*.ts','app/presentation/**/*.ts', 'app/presentation/**/*.tsx'],
-                tasks : ['ts:ui', 'browserify:dev'],
+                files : ['app/common/**/*.ts','app/presentation/**/*.ts', 'app/presentation/**/*.tsx', '**/*.scss'],
+                tasks : ['ts:ui', 'browserify:dev', 'sass:dev'],
                 options : {
                     interrupt : false,
                     atBegin : true,
@@ -119,10 +119,10 @@ module.exports = function(grunt) {
         },
         concurrent : {
             dev : {
-                tasks : ['watch:dev','watch:server', 'nodemon:dev', 'sass:dev'],
+                tasks : ['watch:dev','watch:server', 'nodemon:dev'],
                 options : {
                     logConcurrentOutput : true,
-                    limit:4
+                    limit:5
                 }
             }
 

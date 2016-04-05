@@ -1,1 +1,10 @@
 @import '../../node_modules/bootstrap-sass/assets/stylesheets/bootstrap';
+.word-selector-word-list {
+    label.btn {
+        input[type="radio"] {
+            position: absolute;
+            clip: rect(0,0,0,0);
+            pointer-events: none;
+        }
+    }
+}

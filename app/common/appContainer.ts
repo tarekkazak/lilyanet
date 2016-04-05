@@ -1,5 +1,5 @@
 /// <reference path="../../typings/tsd.d.ts" />
-
+var initialized = false;
 export var messageBus;
 export function registerSocket(socket) {
     messageBus = socketDecorator(socket);
@@ -59,15 +59,19 @@ export function init(socket, io, mode) {
         }
     };
 
-    let wordSchema = new mongoose.Schema({
-        value : String,
-        syllables : Array,
-        searchTerm : String,
-        location : String,
-        selected : Boolean
-    });
+    if(!initialized) {
+        let wordSchema = new mongoose.Schema({
+            value : String,
+            syllables : Array,
+            searchTerm : String,
+            images : Array,
+            tags : Array,
+            selected : Boolean
+        });
 
-    exports.Word = mongoose.model('Word', wordSchema);
+        exports.Word = mongoose.model('Word', wordSchema);
+    
+    }
 
     var MessageService = require('../core/service/messageService').MessageService;
     var msgService = new MessageService(socket, io);
@@ -94,5 +98,6 @@ export function init(socket, io, mode) {
     var LilyaNet = require('../core/model/lilyanet').LilyaNet;
     var lilyaNet = new LilyaNet(mode);
     lilyaNet.init();
+    initialized = true;
     return lilyaNet;
 }

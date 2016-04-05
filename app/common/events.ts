@@ -3,6 +3,7 @@ export class IOEvents {
         static WORD_COMPLETE = 'wordComplete';
         static ADD_WORD = 'addWord';
         static SELECT_WORD = 'selectWord';
+        static UPDATE_WORD = 'updateWord';
         static DELETE_WORD = 'deleteWord';
         static VIEW_UPDATED = 'viewUpdated';
         static RENDER_COMPLETE = 'renderComplete';
