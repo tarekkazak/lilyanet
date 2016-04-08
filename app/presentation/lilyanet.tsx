@@ -8,7 +8,9 @@ declare global {
 
 window.$ = window.jQuery = require('jquery');
 
+require('selectize');
 var io = require('socket.io-client')
+
 var socket = io(container.socketServer);
 
 import {registerSocket} from '../common/appContainer';

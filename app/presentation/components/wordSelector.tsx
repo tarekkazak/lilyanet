@@ -12,19 +12,38 @@ export class WordSelector extends React.Component<any, any> {
     public updateWordSignal:Signal;
     public refs;
     private wordSelectedForEditing;
+    private tagSelector:any;
 
     constructor(props) {
         super(props);
         this.state = {
             words : [],
             editMode : false,
-            searchImages : []
+            searchImages : [],
+            selectedImages : []
         };
         this.onSelectWord = this.onSelectWord.bind(this);
         this.deleteWord = this.deleteWord.bind(this);
         this.onEditWord = this.onEditWord.bind(this);
         this.onSearchTermChange = this.onSearchTermChange.bind(this);
+        this.onSelectImage = this.onSelectImage.bind(this);
         this.updateWord = this.updateWord.bind(this);
+        this.deleteImage = this.deleteImage.bind(this);
+    }
+
+    componentDidMount() {
+
+        this.tagSelector = $(ReactDOM.findDOMNode(this.refs.tags)).selectize({
+            plugins : ['remove_button'],
+            delimiter : ',',
+            create : (input) => {
+                return {
+                    text : input,
+                    value: input
+                }
+            }
+
+        })[0].selectize;
     }
 
     onSelectWord(e) {
@@ -35,12 +54,21 @@ export class WordSelector extends React.Component<any, any> {
         this.selectWordSignal.dispatch(word);
     }
 
+    private getImageObject(url) {
+        return this.state.searchImages.filter((item) => item.image.thumbnailLink === url)[0];
+    }
+
+    onSelectImage(e) {
+        let imageObj = this.getImageObject($(e.target).attr('src'));
+        this.setState({selectedImages : this.state.selectedImages.concat([imageObj])});
+    }
+
     updateWord(e) {
         this.wordSelectedForEditing.value = (ReactDOM.findDOMNode(this.refs.wordInput) as HTMLInputElement).value;
         this.wordSelectedForEditing.searchTerm = (ReactDOM.findDOMNode(this.refs.searchTerm) as HTMLInputElement).value;
-        this.wordSelectedForEditing.images = (ReactDOM.findDOMNode(this.refs.images) as HTMLInputElement).value.split(',');
         this.wordSelectedForEditing.tags = (ReactDOM.findDOMNode(this.refs.tags) as HTMLInputElement).value.split(',');
         this.wordSelectedForEditing.syllables = (ReactDOM.findDOMNode(this.refs.syllables) as HTMLInputElement).value.split(',');
+        this.wordSelectedForEditing.images = this.state.selectedImages;
         this.updateWordSignal.dispatch(this.wordSelectedForEditing);
         this.wordSelectedForEditing = undefined;
         this.setState({editMode : false});
@@ -63,10 +91,10 @@ export class WordSelector extends React.Component<any, any> {
         let word = this.state.words.filter((item) => item._id === id)[0];
         (ReactDOM.findDOMNode(this.refs.wordInput) as HTMLInputElement).value = word.value;
         (ReactDOM.findDOMNode(this.refs.searchTerm) as HTMLInputElement).value = word.searchTerm;
-        (ReactDOM.findDOMNode(this.refs.images) as HTMLInputElement).value = word.images.join(',');
-        (ReactDOM.findDOMNode(this.refs.tags) as HTMLInputElement).value = word.tags.join(',');
+        this.tagSelector.clearOptions();
+        word.tags.map((item) => this.tagSelector.createItem(item));
         (ReactDOM.findDOMNode(this.refs.syllables) as HTMLInputElement).value = word.syllables.join(',');
-        this.setState({editMode: true});
+        this.setState({editMode: true, selectedImages : word.images});
         this.wordSelectedForEditing = word;
         this.onSearchTermChange(null);
     }
@@ -79,12 +107,16 @@ export class WordSelector extends React.Component<any, any> {
         this.deleteWordSignal.dispatch(word);
     }
 
+    deleteImage(e) {
+        this.setState({selectedImages : this.state.selectedImages.filter((item) => item.link !== $(e.target).prev().attr('src'))})
+    }
+
     addWord(e) {
         let word = {
            value : (ReactDOM.findDOMNode(this.refs.wordInput) as HTMLInputElement).value,
            searchTerm : (ReactDOM.findDOMNode(this.refs.searchTerm) as HTMLInputElement).value,
-           images : (ReactDOM.findDOMNode(this.refs.images) as HTMLInputElement).value.split(','),
-           tags : (ReactDOM.findDOMNode(this.refs.tags) as HTMLInputElement).value.split(','),
+           images : this.state.selectedImages,
+           tags : this.tagSelector.items,
            syllables : (ReactDOM.findDOMNode(this.refs.syllables) as HTMLInputElement).value.split(',')
         };
 
@@ -96,9 +128,15 @@ export class WordSelector extends React.Component<any, any> {
     }
 
     render() {
+        let selectedImages = this.state.selectedImages.map((item, index) => (
+            <li key={index} >
+                <img className="media-object" src={item.link} width="20" height="20"/>
+                <button  type="button" onClick={this.deleteImage} className="close" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            </li>)
+        );
         let images = this.state.searchImages.map((item, index) => (
             <li key={index} >
-                <img src={item.image.thumbnailLink} width={item.image.thumbnailWidth} height={item.image.thumbnailHeight} />
+                <img className="media-object" onClick={this.onSelectImage}  src={item.image.thumbnailLink} width={item.image.thumbnailWidth} height={item.image.thumbnailHeight} />
             </li>)
         );
         let items = this.state.words.map((word) => (
@@ -129,7 +167,7 @@ export class WordSelector extends React.Component<any, any> {
                     <div className="form-group">
                         <label className="col-md-2">images</label>
                         <div className="col-md-10">
-                            <input className="form-control" type="text" ref="images"  />
+                            <ul className="list-inline">{selectedImages} </ul>
                         </div>
                     </div>
 

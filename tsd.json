@@ -63,7 +63,7 @@
       "commit": "1da639a106527e0c4010b354a1efe52a3059a291"
     },
     "jquery/jquery.d.ts": {
-      "commit": "1da639a106527e0c4010b354a1efe52a3059a291"
+      "commit": "513510a89acc648422c9abb047265116198f99ee"
     },
     "lodash/lodash.d.ts": {
       "commit": "1da639a106527e0c4010b354a1efe52a3059a291"
@@ -79,6 +79,9 @@
     },
     "js-signals/js-signals.d.ts": {
       "commit": "6766ed1d0faf02ede9e2edf2e66bbb2388c825ec"
+    },
+    "selectize/selectize.d.ts": {
+      "commit": "513510a89acc648422c9abb047265116198f99ee"
     }
   }
 }
