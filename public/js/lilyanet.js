@@ -1,5 +1,6 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 "use strict";
+var initialized = false;
 function registerSocket(socket) {
     exports.messageBus = socketDecorator(socket);
 }
@@ -38,14 +39,17 @@ function init(socket, io, mode) {
             });
         }
     };
-    let wordSchema = new mongoose.Schema({
-        value: String,
-        syllables: Array,
-        searchTerm: String,
-        location: String,
-        selected: Boolean
-    });
-    exports.Word = mongoose.model('Word', wordSchema);
+    if (!initialized) {
+        let wordSchema = new mongoose.Schema({
+            value: String,
+            syllables: Array,
+            searchTerm: String,
+            images: Array,
+            tags: Array,
+            selected: Boolean
+        });
+        exports.Word = mongoose.model('Word', wordSchema);
+    }
     var MessageService = require('../core/service/messageService').MessageService;
     var msgService = new MessageService(socket, io);
     exports.messageService = function (target, key) {
@@ -64,11 +68,12 @@ function init(socket, io, mode) {
     var LilyaNet = require('../core/model/lilyanet').LilyaNet;
     var lilyaNet = new LilyaNet(mode);
     lilyaNet.init();
+    initialized = true;
     return lilyaNet;
 }
 exports.init = init;
 
-},{"../core/model/lilyanet":4,"../core/service/messageService":7,"mongoose":53}],2:[function(require,module,exports){
+},{"../core/model/lilyanet":4,"../core/service/messageService":7,"mongoose":51}],2:[function(require,module,exports){
 "use strict";
 class IOEvents {
 }
@@ -76,6 +81,7 @@ IOEvents.WORD_UPDATED = 'wordUpdated';
 IOEvents.WORD_COMPLETE = 'wordComplete';
 IOEvents.ADD_WORD = 'addWord';
 IOEvents.SELECT_WORD = 'selectWord';
+IOEvents.UPDATE_WORD = 'updateWord';
 IOEvents.DELETE_WORD = 'deleteWord';
 IOEvents.VIEW_UPDATED = 'viewUpdated';
 IOEvents.RENDER_COMPLETE = 'renderComplete';
@@ -97,7 +103,7 @@ class Utils {
 }
 exports.Utils = Utils;
 
-},{"folktale/core":21}],4:[function(require,module,exports){
+},{"folktale/core":18}],4:[function(require,module,exports){
 "use strict";
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
@@ -133,6 +139,10 @@ class LilyaNet {
         }).then((words) => {
             this.messageService.sendMessage(events_1.IOEvents.WORD_LIST_UPDATED, words);
         });
+        this.messageService.on(events_1.IOEvents.UPDATE_WORD, (word) => {
+            console.log('on update word');
+            this.updateWord(word);
+        });
         this.messageService.on(events_1.IOEvents.ADD_WORD, (word) => {
             console.log('on add word');
             this.addWord(word);
@@ -144,6 +154,9 @@ class LilyaNet {
             this.deleteWord(word);
         });
     }
+    close() {
+        this.dao.close();
+    }
     getLetters() {
         return this.letters;
     }
@@ -151,13 +164,26 @@ class LilyaNet {
         this.letters.push(letter);
     }
     deleteWord(word) {
-        console.log('select word', word);
+        console.log('delete word', word);
         this.dao.findById(word._id).then((word) => {
             return word.remove();
         }).then(() => {
             return this.getAllWords();
         }).then((words) => {
-            console.log('words after selecting word', words);
+            this.messageService.sendMessage(events_1.IOEvents.WORD_LIST_UPDATED, words);
+        });
+    }
+    updateWord(word) {
+        console.log('update word', word);
+        this.dao.findById(word._id).then((w) => {
+            for (let key in word) {
+                w[key] = word[key];
+            }
+            console.log('update word model', w);
+            return this.dao.save(w);
+        }).then(() => {
+            return this.getAllWords();
+        }).then((words) => {
             this.messageService.sendMessage(events_1.IOEvents.WORD_LIST_UPDATED, words);
         });
     }
@@ -169,7 +195,6 @@ class LilyaNet {
         }).then(() => {
             return this.getAllWords();
         }).then((words) => {
-            console.log('words after selecting word', words);
             this.messageService.sendMessage(events_1.IOEvents.WORD_LIST_UPDATED, words);
         });
     }
@@ -178,7 +203,6 @@ class LilyaNet {
         this.dao.addWord(word).then(() => {
             return this.getAllWords();
         }).then((words) => {
-            console.log('all words after add', words);
             this.messageService.sendMessage(events_1.IOEvents.WORD_LIST_UPDATED, words);
         });
     }
@@ -190,9 +214,9 @@ class LilyaNet {
     }
     getWordList() {
         var getSelectedWords = this.getSelectedItems('value');
-        var values = this.getAllWords();
-        var words = getSelectedWords(values);
-        return words;
+        return this.getAllWords().then((values) => {
+            return getSelectedWords(values);
+        });
     }
     containsWord(word) {
         return !this.wordDataCompose(Maybe.of(word)).isNothing;
@@ -201,8 +225,9 @@ class LilyaNet {
         this.letters = [];
     }
     getWordData(word) {
-        let wordData = this.getAllWords().filter((x) => x.value === word);
-        return Maybe.fromNullable(wordData[0]);
+        return this.getAllWords().then((result) => {
+            return result.filter((x) => x.value === word);
+        });
     }
     isResourceLocal(word) {
         function getLocation(item) {
@@ -222,7 +247,7 @@ __decorate([
 ], LilyaNet.prototype, "messageService", void 0);
 exports.LilyaNet = LilyaNet;
 
-},{"../../common/appContainer":1,"../../common/events":2,"../../common/utils":3,"../service/letterGeneratorService":6,"./lilyanetDao":5,"folktale/control":20,"folktale/data":22,"lodash":51}],5:[function(require,module,exports){
+},{"../../common/appContainer":1,"../../common/events":2,"../../common/utils":3,"../service/letterGeneratorService":6,"./lilyanetDao":5,"folktale/control":17,"folktale/data":19,"lodash":48}],5:[function(require,module,exports){
 "use strict";
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
@@ -244,6 +269,9 @@ class LilyanetDao {
             this.dbConnect.connect('mongodb://104.131.104.228/lilyanet');
         });
     }
+    close() {
+        this.dbConnect.connection.close();
+    }
     getWords(query) {
         query === undefined ? null : query;
         console.log('query', query);
@@ -257,7 +285,6 @@ class LilyanetDao {
         return this.save(newWord);
     }
     save(word) {
-        console.log('save', word);
         return word.save();
     }
 }
@@ -284,55 +311,54 @@ class LetterGenerator {
             this.mode = 'default';
         }
     }
+    start() {
+        var startGenerator = () => {
+            console.log('start generation');
+            return this.model.getSelectedWords().then((words) => {
+                var gen = this.generateLetter(words);
+                return [gen, gen.next().value];
+            });
+        };
+        startGenerator().then((result) => {
+            this.gen = result[0];
+            var generated = result[1];
+            this.messageService.sendMessage(events_1.IOEvents.LETTER_UPDATED, generated);
+            console.log('generator start', generated);
+        });
+    }
     init() {
-        function* generateLetter(words) {
+        this.generateLetter = function* (words) {
             for (let word of words) {
                 let letters = [];
-                for (let letter of word) {
+                for (let letter of word.value) {
                     letters.push(letter.toUpperCase());
                     yield { complete: false, letters: letters };
                 }
                 yield { complete: true, word: word };
             }
-        }
-        var startGenerator = () => {
-            console.log('start generation');
-            var words = this.model.getWordList();
-            console.log(words);
-            var gen = generateLetter(words);
-            return [gen, gen.next().value];
         };
-        var ioConnectionPromise = new Promise((resolve, reject) => {
-            this.messageService.on(events_1.IOEvents.RENDER_COMPLETE, () => {
-                console.log('first render');
-                resolve();
-            });
-        });
-        ioConnectionPromise.then(() => {
-            var result = startGenerator();
-            var gen = result[0];
-            var generated = result[1];
-            this.messageService.sendMessage(events_1.IOEvents.LETTER_UPDATED, generated);
-            this.messageService.on(events_1.IOEvents.VIEW_UPDATED, () => {
-                var wait = 1300;
-                generated = gen.next().value;
-                console.log('generated', generated);
-                if (generated.complete === true) {
-                    var next = gen.next();
-                    generated = next.value;
-                    if (next.done) {
-                        result = startGenerator();
-                        gen = result[0];
-                        generated = result[1];
-                    }
-                    else {
-                        this.messageService.sendMessage(events_1.IOEvents.WORD_COMPLETE, generated.word, 0);
-                        wait = 5000;
-                    }
+        this.messageService.on(events_1.IOEvents.VIEW_UPDATED, () => {
+            var wait = 1300;
+            var generated = this.gen.next().value;
+            console.log('generated', generated);
+            this.messageService.sendMessage(events_1.IOEvents.WORD_COMPLETE, { complete: false }, 0);
+            if (generated.complete === true) {
+                var word = generated.word;
+                var next = this.gen.next();
+                generated = next.value;
+                this.messageService.sendMessage(events_1.IOEvents.WORD_COMPLETE, { complete: true, images: word.images }, 0);
+                if (next.done) {
+                    setTimeout(() => this.start(), 3500);
+                    return;
                 }
-                this.messageService.sendMessage(events_1.IOEvents.LETTER_UPDATED, generated, wait);
-            });
+                else {
+                    console.log('generated word', word.value, word.images.length);
+                    wait = 5000;
+                }
+            }
+            this.messageService.sendMessage(events_1.IOEvents.LETTER_UPDATED, generated, wait);
         });
+        this.start();
     }
 }
 __decorate([
@@ -374,7 +400,7 @@ class ImageLoader extends React.Component {
     }
     render() {
         let images = _.map(this.state.images, (item) => {
-            return (React.createElement("img", {key: item.url, width: "200", height: "200", src: item.url}));
+            return (React.createElement("img", {key: item.link, width: "200", height: "200", src: item.link}));
         });
         let style = {
             visibility: this.state.images.length > 0 ? 'visible' : 'hidden'
@@ -384,7 +410,7 @@ class ImageLoader extends React.Component {
 }
 exports.ImageLoader = ImageLoader;
 
-},{"lodash":51,"react":296}],9:[function(require,module,exports){
+},{"lodash":48,"react":294}],9:[function(require,module,exports){
 "use strict";
 const React = require('react');
 class Letter extends React.Component {
@@ -404,7 +430,7 @@ class Letter extends React.Component {
 }
 exports.Letter = Letter;
 
-},{"react":296}],10:[function(require,module,exports){
+},{"react":294}],10:[function(require,module,exports){
 "use strict";
 var monads = require('folktale/control').monads;
 var Maybe = require('folktale/data').Maybe;
@@ -437,55 +463,131 @@ class Word extends React.Component {
 }
 exports.Word = Word;
 
-},{"./letter":9,"folktale/control":20,"folktale/data":22,"lodash":51,"react":296,"react-dom":140}],11:[function(require,module,exports){
+},{"./letter":9,"folktale/control":17,"folktale/data":19,"lodash":48,"react":294,"react-dom":138}],11:[function(require,module,exports){
 "use strict";
 var monads = require('folktale/control').monads;
 var Maybe = require('folktale/data').Maybe;
 const React = require('react');
-const $ = require('jquery');
 const ReactDOM = require('react-dom');
 class WordSelector extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
-            words: []
+            words: [],
+            editMode: false,
+            searchImages: [],
+            selectedImages: []
         };
         this.onSelectWord = this.onSelectWord.bind(this);
         this.deleteWord = this.deleteWord.bind(this);
+        this.onEditWord = this.onEditWord.bind(this);
+        this.onSearchTermChange = this.onSearchTermChange.bind(this);
+        this.onSelectImage = this.onSelectImage.bind(this);
+        this.updateWord = this.updateWord.bind(this);
+        this.deleteImage = this.deleteImage.bind(this);
+        this.deleteAllImages = this.deleteAllImages.bind(this);
+    }
+    componentDidMount() {
+        this.tagSelector = $(ReactDOM.findDOMNode(this.refs.tags)).selectize({
+            plugins: ['remove_button'],
+            delimiter: ',',
+            create: (input) => {
+                return {
+                    text: input,
+                    value: input
+                };
+            }
+        })[0].selectize;
     }
     onSelectWord(e) {
-        let id = $(e.target).closest('[data-model]').attr('data-model');
+        e.preventDefault();
+        e.stopPropagation();
+        let id = this.getWordId(e.target);
         let word = this.state.words.filter((item) => item._id === id)[0];
         this.selectWordSignal.dispatch(word);
+    }
+    getImageObject(url) {
+        return this.state.searchImages.filter((item) => item.image.thumbnailLink === url)[0];
+    }
+    onSelectImage(e) {
+        let imageObj = this.getImageObject($(e.target).attr('src'));
+        this.setState({ selectedImages: this.state.selectedImages.concat([imageObj]) });
+    }
+    updateWord(e) {
+        this.wordSelectedForEditing.value = ReactDOM.findDOMNode(this.refs.wordInput).value;
+        this.wordSelectedForEditing.searchTerm = ReactDOM.findDOMNode(this.refs.searchTerm).value;
+        this.wordSelectedForEditing.tags = this.tagSelector.items;
+        this.wordSelectedForEditing.syllables = ReactDOM.findDOMNode(this.refs.syllables).value.split(',');
+        this.wordSelectedForEditing.images = this.state.selectedImages;
+        this.updateWordSignal.dispatch(this.wordSelectedForEditing);
+        this.wordSelectedForEditing = undefined;
+        this.tagSelector.clearOptions();
+        ReactDOM.findDOMNode(this.refs.wordInput).value = '';
+        ReactDOM.findDOMNode(this.refs.searchTerm).value = '';
+        ReactDOM.findDOMNode(this.refs.syllables).value = '';
+        this.setState({ editMode: false, searchImages: [], selectedImages: [] });
+    }
+    onSearchTermChange(e) {
+        let term = ReactDOM.findDOMNode(this.refs.searchTerm).value;
+        let query = `https://www.googleapis.com/customsearch/v1?key=AIzaSyB8CHLzyq52zdN33jnkuUAfqyp4GbBVzxU&cx=003704182668535555907:clqfeypkaeo&q=${term}&searchType=image&num=10`;
+        $.get(query).then((data) => {
+            console.log(data);
+            this.setState({ searchImages: data.items });
+        });
+    }
+    onEditWord(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        let id = this.getWordId(e.target);
+        let word = this.state.words.filter((item) => item._id === id)[0];
+        ReactDOM.findDOMNode(this.refs.wordInput).value = word.value;
+        ReactDOM.findDOMNode(this.refs.searchTerm).value = word.searchTerm;
+        this.tagSelector.clearOptions();
+        word.tags.map((item) => this.tagSelector.createItem(item));
+        ReactDOM.findDOMNode(this.refs.syllables).value = word.syllables.join(',');
+        this.setState({ editMode: true, selectedImages: word.images });
+        this.wordSelectedForEditing = word;
+        this.onSearchTermChange(null);
     }
     deleteWord(e) {
         e.preventDefault();
         e.stopPropagation();
-        let id = $(e.target).closest('[data-model]').attr('data-model');
+        let id = this.getWordId(e.target);
         let word = this.state.words.filter((item) => item._id === id)[0];
         this.deleteWordSignal.dispatch(word);
+    }
+    deleteAllImages(e) {
+        this.setState({ selectedImages: [] });
+    }
+    deleteImage(e) {
+        this.setState({ selectedImages: this.state.selectedImages.filter((item) => item.image.thumbnailLink !== $(e.currentTarget).prev().attr('src')) });
     }
     addWord(e) {
         let word = {
             value: ReactDOM.findDOMNode(this.refs.wordInput).value,
             searchTerm: ReactDOM.findDOMNode(this.refs.searchTerm).value,
-            location: ReactDOM.findDOMNode(this.refs.location).value,
+            images: this.state.selectedImages,
+            tags: this.tagSelector.items,
             syllables: ReactDOM.findDOMNode(this.refs.syllables).value.split(',')
         };
         this.addWordSignal.dispatch(word);
     }
-    getClass(selected) {
-        return selected ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-default';
+    getWordId(element) {
+        return $(element).is('[data-model]') ? $(element).attr('data-model') : $(element).closest('[data-model]').attr('data-model');
     }
     render() {
-        let items = this.state.words.map((word) => (React.createElement("li", {key: word._id}, React.createElement("button", {"data-model": word._id, className: this.getClass(word.selected), onClick: this.onSelectWord}, word.value, React.createElement("button", {type: "button", onClick: this.deleteWord, className: "close", "aria-label": "Close"}, React.createElement("span", {"aria-hidden": "true"}, "×"))))));
-        return (React.createElement("div", {className: "form-horizontal"}, React.createElement("div", {className: "form-group"}, React.createElement("label", {className: "col-md-2"}, "Add Word"), React.createElement("div", {className: "col-md-10"}, React.createElement("input", {className: "form-control", type: "text", ref: "wordInput"}))), React.createElement("div", {className: "form-group"}, React.createElement("label", {className: "col-md-2"}, "Syllables"), React.createElement("div", {className: "col-md-10"}, React.createElement("input", {className: "form-control", type: "text", ref: "syllables"}))), React.createElement("div", {className: "form-group"}, React.createElement("label", {className: "col-md-2"}, "image location"), React.createElement("div", {className: "col-md-10"}, React.createElement("input", {className: "form-control", type: "text", ref: "location"}))), React.createElement("div", {className: "form-group"}, React.createElement("label", {className: "col-md-2"}, "search term"), React.createElement("div", {className: "col-md-10"}, React.createElement("input", {className: "form-control", type: "text", ref: "searchTerm"}))), React.createElement("div", {className: "col-md-12"}, React.createElement("button", {className: "btn -btn-primary", onClick: this.addWord.bind(this)}, "Add")), React.createElement("div", {className: "form-group"}, React.createElement("label", {className: "col-md-2"}, "Selected Words"), React.createElement("div", {className: "col-md-12"}, React.createElement("ul", {className: "list-inline"}, items)))));
+        let selectedImages = this.state.selectedImages.map((item, index) => (React.createElement("li", {key: index}, React.createElement("img", {className: "media-object", src: item.image.thumbnailLink, width: "40", height: "40"}), React.createElement("button", {type: "button", onClick: this.deleteImage, className: "close", "aria-label": "Close"}, React.createElement("span", {"aria-hidden": "true"}, "×")))));
+        let images = this.state.searchImages.map((item, index) => (React.createElement("li", {key: index}, React.createElement("img", {className: "media-object", onClick: this.onSelectImage, src: item.image.thumbnailLink, width: item.image.thumbnailWidth, height: item.image.thumbnailHeight}))));
+        let items = this.state.words.map((word) => (React.createElement("li", {key: word._id}, React.createElement("label", {className: word.selected ? 'btn btn-primary' : 'btn btn-default', onClick: this.onSelectWord, "data-model": word._id}, word.value, React.createElement("i", {className: "glyphicon glyphicon-edit", onClick: this.onEditWord}), React.createElement("button", {type: "button", onClick: this.deleteWord, className: "close", "aria-label": "Close"}, React.createElement("span", {"aria-hidden": "true"}, "×"))))));
+        return (React.createElement("div", {className: "form-horizontal"}, React.createElement("div", {className: "form-group"}, React.createElement("label", {className: "col-md-2"}, "Add Word"), React.createElement("div", {className: "col-md-10"}, React.createElement("input", {className: "form-control", type: "text", ref: "wordInput"}))), React.createElement("div", {className: "form-group"}, React.createElement("label", {className: "col-md-2"}, "Syllables"), React.createElement("div", {className: "col-md-10"}, React.createElement("input", {className: "form-control", type: "text", ref: "syllables"}))), React.createElement("div", {className: "form-group"}, React.createElement("label", {className: "col-md-2"}, "images"), React.createElement("div", {className: "col-md-10"}, React.createElement("ul", {className: "list-inline"}, selectedImages, " "), React.createElement("button", {type: "button", onClick: this.deleteAllImages, className: "close", "aria-label": "Close"}, React.createElement("span", {"aria-hidden": "true"}, "×")))), React.createElement("div", {className: "form-group"}, React.createElement("label", {className: "col-md-2"}, "tags"), React.createElement("div", {className: "col-md-10"}, React.createElement("input", {className: "form-control", type: "text", ref: "tags"}))), React.createElement("div", {className: "form-group"}, React.createElement("label", {className: "col-md-2"}, "search term"), React.createElement("div", {className: "col-md-10"}, React.createElement("input", {onChange: this.onSearchTermChange, className: "form-control", type: "text", ref: "searchTerm"}))), React.createElement("div", {className: "col-md-12"}, React.createElement("button", {className: "btn btn-primary", disabled: !this.state.editMode, onClick: this.updateWord.bind(this)}, "Update"), React.createElement("button", {className: "btn btn-success", disabled: this.state.editMode, onClick: this.addWord.bind(this)}, "Add")), React.createElement("div", {className: "form-group"}, React.createElement("label", {className: "col-md-2"}, "Selected Words"), React.createElement("div", {className: "col-md-12"}, React.createElement("ul", {className: "word-selector-word-list list-inline"}, items), React.createElement("ul", {className: " list-inline"}, images)))));
     }
 }
 exports.WordSelector = WordSelector;
 
-},{"folktale/control":20,"folktale/data":22,"jquery":50,"react":296,"react-dom":140}],12:[function(require,module,exports){
+},{"folktale/control":17,"folktale/data":19,"react":294,"react-dom":138}],12:[function(require,module,exports){
 "use strict";
+window.$ = window.jQuery = require('jquery');
+require('selectize');
 var io = require('socket.io-client');
 var socket = io(container.socketServer);
 const appContainer_1 = require('../common/appContainer');
@@ -510,7 +612,7 @@ let wordSelector = ReactDOM.render(React.createElement(wordSelector_1.WordSelect
     let wordSelectorMediator = new wordSelectorMediator_1.WordSelectorMediator(this);
 });
 
-},{"../common/appContainer":1,"../common/events":2,"./components/imageLoader":8,"./components/word":10,"./components/wordSelector":11,"./mediators/imageLoaderMediator":14,"./mediators/wordMediator":15,"./mediators/wordSelectorMediator":16,"react":296,"react-dom":140,"socket.io-client":298}],13:[function(require,module,exports){
+},{"../common/appContainer":1,"../common/events":2,"./components/imageLoader":8,"./components/word":10,"./components/wordSelector":11,"./mediators/imageLoaderMediator":14,"./mediators/wordMediator":15,"./mediators/wordSelectorMediator":16,"jquery":47,"react":294,"react-dom":138,"selectize":295,"socket.io-client":298}],13:[function(require,module,exports){
 "use strict";
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
@@ -533,36 +635,34 @@ exports.AbstractMediator = AbstractMediator;
 "use strict";
 const events_1 = require('../../common/events');
 const abstractMediator_1 = require('./abstractMediator');
-const imageServiceProvider_1 = require('../service/imageServiceProvider');
 class ImageLoaderMediator extends abstractMediator_1.AbstractMediator {
     constructor(component) {
         super(component);
-        this.imageServiceProvider = new imageServiceProvider_1.ImageServiceProvider();
-        this.messageBus.on(events_1.IOEvents.WORD_COMPLETE, this.updateView);
+        this.messageBus.on(events_1.IOEvents.WORD_COMPLETE, this.updateView.bind(this));
     }
     updateView(payload) {
-        let imageService = this.imageServiceProvider.get(payload.isLocal);
         this.component.setState({
-            images: imageService.search(payload.searchTerm)
+            images: payload.complete ? payload.images : []
         });
     }
 }
 exports.ImageLoaderMediator = ImageLoaderMediator;
 
-},{"../../common/events":2,"../service/imageServiceProvider":18,"./abstractMediator":13}],15:[function(require,module,exports){
+},{"../../common/events":2,"./abstractMediator":13}],15:[function(require,module,exports){
 "use strict";
 const events_1 = require('../../common/events');
 const abstractMediator_1 = require('./abstractMediator');
 class WordMediator extends abstractMediator_1.AbstractMediator {
     constructor(component) {
         super(component);
-        this.messageBus.on(events_1.IOEvents.LETTER_UPDATED, this.updateView);
+        this.messageBus.on(events_1.IOEvents.LETTER_UPDATED, this.updateView.bind(this));
     }
     updateView(payload) {
         var letters = payload.letters;
         this.component.setState({
             letters: letters
         }, () => {
+            console.log('words updated');
             this.messageBus.emit(events_1.IOEvents.VIEW_UPDATED);
         });
     }
@@ -581,6 +681,8 @@ class WordSelectorMediator extends abstractMediator_1.AbstractMediator {
         component.addWordSignal.add(this.onAddWord.bind(this));
         component.selectWordSignal = new signals_1.Signal();
         component.selectWordSignal.add(this.onSelectWord.bind(this));
+        component.updateWordSignal = new signals_1.Signal();
+        component.updateWordSignal.add(this.onUpdateWord.bind(this));
         component.deleteWordSignal = new signals_1.Signal();
         component.deleteWordSignal.add(this.onDeleteWord.bind(this));
         this.messageBus.on(events_1.IOEvents.WORD_LIST_UPDATED, this.updateView.bind(this));
@@ -594,6 +696,9 @@ class WordSelectorMediator extends abstractMediator_1.AbstractMediator {
     onDeleteWord(word) {
         this.messageBus.emit(events_1.IOEvents.DELETE_WORD, word);
     }
+    onUpdateWord(word) {
+        this.messageBus.emit(events_1.IOEvents.UPDATE_WORD, word);
+    }
     updateView(payload) {
         this.component.setState({
             words: payload
@@ -603,92 +708,11 @@ class WordSelectorMediator extends abstractMediator_1.AbstractMediator {
 exports.WordSelectorMediator = WordSelectorMediator;
 
 },{"../../common/events":2,"./abstractMediator":13,"signals":297}],17:[function(require,module,exports){
-"use strict";
-class GoogleImageService {
-    constructor() {
-        this.promise = new Promise((resolve, reject) => {
-            function OnLoad() {
-                var imageSearch = new this.google.search.ImageSearch();
-                imageSearch.setResultSetSize(8);
-                resolve(imageSearch);
-            }
-            if (this.google) {
-                this.google.load('search', '1', { language: 'fr' });
-                this.google.setOnLoadCallback(OnLoad);
-            }
-        });
-    }
-    search(searchTerm) {
-        var self = this;
-        return this.promise.then((imageSearch) => {
-            var resultPromise = new Promise((resolve, reject) => {
-                function searchComplete() {
-                    resolve(imageSearch.results.map((item) => ({ url: item.tbUrl })));
-                }
-                imageSearch.setSearchCompleteCallback(self, searchComplete, null);
-                imageSearch.execute(searchTerm);
-            });
-            return resultPromise;
-        });
-    }
-    ;
-}
-exports.GoogleImageService = GoogleImageService;
-
-},{}],18:[function(require,module,exports){
-"use strict";
-const googleImageService_1 = require('./googleImageService');
-const localImageService_1 = require('./localImageService');
-class ImageServiceProvider {
-    constructor() {
-        this.googleImageService = new googleImageService_1.GoogleImageService();
-        this.localImageService = new localImageService_1.LocalImageService('/images/');
-    }
-    get(local) {
-        if (local) {
-            return this.localImageService;
-        }
-        else {
-            return this.googleImageService;
-        }
-    }
-}
-exports.ImageServiceProvider = ImageServiceProvider;
-
-},{"./googleImageService":17,"./localImageService":19}],19:[function(require,module,exports){
-"use strict";
-class LocalImageService {
-    constructor(localImageUrl) {
-        this.localImageUrl = localImageUrl;
-    }
-    search(searchTerm) {
-        searchTerm = searchTerm.toLowerCase();
-        var results = [
-            {
-                url: this.localImageUrl + searchTerm + '/1.jpg'
-            },
-            {
-                url: this.localImageUrl + searchTerm + '/2.jpg'
-            },
-            {
-                url: this.localImageUrl + searchTerm + '/3.jpg'
-            },
-            {
-                url: this.localImageUrl + searchTerm + '/4.jpg'
-            }
-        ];
-        console.log('search term', searchTerm);
-        return Promise.resolve(results);
-    }
-}
-exports.LocalImageService = LocalImageService;
-
-},{}],20:[function(require,module,exports){
 module.exports = {
     monads: require('control.monads')
 }
 
-},{"control.monads":25}],21:[function(require,module,exports){
+},{"control.monads":22}],18:[function(require,module,exports){
 module.exports = {
     arity: require('core.arity'),
     inspect: require('core.inspect'),
@@ -696,7 +720,7 @@ module.exports = {
     operators: require('core.operators')
 }
 
-},{"core.arity":28,"core.inspect":29,"core.lambda":30,"core.operators":31}],22:[function(require,module,exports){
+},{"core.arity":25,"core.inspect":26,"core.lambda":27,"core.operators":28}],19:[function(require,module,exports){
 module.exports = {
     Either: require('data.either'),
     Maybe: require('data.maybe'),
@@ -704,7 +728,7 @@ module.exports = {
     Validation: require('data.validation')
 }
 
-},{"data.either":33,"data.maybe":34,"data.task":36,"data.validation":38}],23:[function(require,module,exports){
+},{"data.either":30,"data.maybe":31,"data.task":33,"data.validation":35}],20:[function(require,module,exports){
 // Copyright (c) 2013-2014 Quildreen Motta <quildreen@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person
@@ -860,7 +884,7 @@ function liftMN(f, ms) {
   :      /* otherwise */  sequence(ms[len - 1], ms).map(function(xs) {
                                                           return f.apply(null, xs) })
 }
-},{"core.lambda":30}],24:[function(require,module,exports){
+},{"core.lambda":27}],21:[function(require,module,exports){
 // Copyright (c) 2013-2014 Quildreen Motta <quildreen@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person
@@ -970,7 +994,7 @@ exports.chain = curry(2, chain)
 function chain(f, a) {
   return a.chain(f)
 }
-},{"core.lambda":30}],25:[function(require,module,exports){
+},{"core.lambda":27}],22:[function(require,module,exports){
 // Copyright (c) 2013-2014 Quildreen Motta <quildreen@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person
@@ -997,7 +1021,7 @@ var merge = require('xtend')
 module.exports = [ require('./curried')
                  , require('./basic')
                  ].reduce(merge, {})
-},{"./basic":23,"./curried":24,"xtend":27}],26:[function(require,module,exports){
+},{"./basic":20,"./curried":21,"xtend":24}],23:[function(require,module,exports){
 module.exports = hasKeys
 
 function hasKeys(source) {
@@ -1006,7 +1030,7 @@ function hasKeys(source) {
         typeof source === "function")
 }
 
-},{}],27:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 var hasKeys = require("./has-keys")
 
 module.exports = extend
@@ -1031,7 +1055,7 @@ function extend() {
     return target
 }
 
-},{"./has-keys":26}],28:[function(require,module,exports){
+},{"./has-keys":23}],25:[function(require,module,exports){
 // Copyright (c) 2014 Quildreen Motta
 //
 // Permission is hereby granted, free of charge, to any person
@@ -1127,7 +1151,7 @@ exports.ternary = curry(4, ternary)
 function ternary(f, a, b, c) {
   return f(a, b, c)
 }
-},{}],29:[function(require,module,exports){
+},{}],26:[function(require,module,exports){
 // Copyright (c) 2014 Quildreen Motta
 //
 // Permission is hereby granted, free of charge, to any person
@@ -1291,7 +1315,7 @@ function show(maxDepth, value) {
 module.exports = exports = function(a){ return show(5, a) };
 exports.show = show;
 
-},{}],30:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 // Copyright (c) 2013-2014 Quildreen Motta <quildreen@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person
@@ -1472,7 +1496,7 @@ function upon(f, g, a, b) {
   return f(g(a))(g(b))
 }
 
-},{}],31:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 // Copyright (c) 2014 Quildreen Motta
 //
 // Permission is hereby granted, free of charge, to any person
@@ -1961,7 +1985,7 @@ function classOf(a) {
   :      /* otherwise */   internalToString(a).slice(8, -1)
 }
 
-},{"core.lambda":30}],32:[function(require,module,exports){
+},{"core.lambda":27}],29:[function(require,module,exports){
 // Copyright (c) 2013-2014 Quildreen Motta <quildreen@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person
@@ -2371,7 +2395,7 @@ Left.prototype.leftMap = function(f) {
   return this.Left(f(this.value))
 }
 
-},{}],33:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 // Copyright (c) 2013-2014 Quildreen Motta <quildreen@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person
@@ -2394,7 +2418,7 @@ Left.prototype.leftMap = function(f) {
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 module.exports = require('./either')
-},{"./either":32}],34:[function(require,module,exports){
+},{"./either":29}],31:[function(require,module,exports){
 // Copyright (c) 2013-2014 Quildreen Motta <quildreen@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person
@@ -2417,7 +2441,7 @@ module.exports = require('./either')
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 module.exports = require('./maybe')
-},{"./maybe":35}],35:[function(require,module,exports){
+},{"./maybe":32}],32:[function(require,module,exports){
 // Copyright (c) 2013-2014 Quildreen Motta <quildreen@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person
@@ -2795,10 +2819,10 @@ Just.prototype.toJSON = function() {
          , value: this.value }
 }
 
-},{}],36:[function(require,module,exports){
+},{}],33:[function(require,module,exports){
 module.exports = require('./task');
 
-},{"./task":37}],37:[function(require,module,exports){
+},{"./task":34}],34:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -3107,7 +3131,7 @@ Task.prototype.rejectedMap = function _rejectedMap(f) {
 };
 
 }).call(this,require('_process'))
-},{"_process":47}],38:[function(require,module,exports){
+},{"_process":44}],35:[function(require,module,exports){
 // Copyright (c) 2013-2014 Quildreen Motta <quildreen@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person
@@ -3130,7 +3154,7 @@ Task.prototype.rejectedMap = function _rejectedMap(f) {
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 module.exports = require('./validation')
-},{"./validation":39}],39:[function(require,module,exports){
+},{"./validation":36}],36:[function(require,module,exports){
 // Copyright (c) 2013-2014 Quildreen Motta <quildreen@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person
@@ -3513,7 +3537,7 @@ Failure.prototype.failureMap = function(f) {
 Validation.prototype.leftMap = Validation.prototype.failureMap
 Success.prototype.leftMap    = Success.prototype.failureMap
 Failure.prototype.leftMap    = Failure.prototype.failureMap
-},{}],40:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
 // http://wiki.commonjs.org/wiki/Unit_Testing/1.0
 //
 // THIS IS NOT TESTED NOR LIKELY TO WORK OUTSIDE V8!
@@ -3874,7 +3898,7 @@ var objectKeys = Object.keys || function (obj) {
   return keys;
 };
 
-},{"util/":49}],41:[function(require,module,exports){
+},{"util/":46}],38:[function(require,module,exports){
 /*!
  * The buffer module from node.js, for the browser.
  *
@@ -5409,7 +5433,7 @@ function blitBuffer (src, dst, offset, length) {
   return i
 }
 
-},{"base64-js":42,"ieee754":43,"is-array":44}],42:[function(require,module,exports){
+},{"base64-js":39,"ieee754":40,"is-array":41}],39:[function(require,module,exports){
 var lookup = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
 ;(function (exports) {
@@ -5535,7 +5559,7 @@ var lookup = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 	exports.fromByteArray = uint8ToBase64
 }(typeof exports === 'undefined' ? (this.base64js = {}) : exports))
 
-},{}],43:[function(require,module,exports){
+},{}],40:[function(require,module,exports){
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
   var e, m
   var eLen = nBytes * 8 - mLen - 1
@@ -5621,7 +5645,7 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128
 }
 
-},{}],44:[function(require,module,exports){
+},{}],41:[function(require,module,exports){
 
 /**
  * isArray
@@ -5656,7 +5680,7 @@ module.exports = isArray || function (val) {
   return !! val && '[object Array]' == str.call(val);
 };
 
-},{}],45:[function(require,module,exports){
+},{}],42:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -5959,7 +5983,7 @@ function isUndefined(arg) {
   return arg === void 0;
 }
 
-},{}],46:[function(require,module,exports){
+},{}],43:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -5984,7 +6008,7 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],47:[function(require,module,exports){
+},{}],44:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -6076,14 +6100,14 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],48:[function(require,module,exports){
+},{}],45:[function(require,module,exports){
 module.exports = function isBuffer(arg) {
   return arg && typeof arg === 'object'
     && typeof arg.copy === 'function'
     && typeof arg.fill === 'function'
     && typeof arg.readUInt8 === 'function';
 }
-},{}],49:[function(require,module,exports){
+},{}],46:[function(require,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -6673,7 +6697,7 @@ function hasOwnProperty(obj, prop) {
 }
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./support/isBuffer":48,"_process":47,"inherits":46}],50:[function(require,module,exports){
+},{"./support/isBuffer":45,"_process":44,"inherits":43}],47:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v2.1.4
  * http://jquery.com/
@@ -15885,7 +15909,7 @@ return jQuery;
 
 }));
 
-},{}],51:[function(require,module,exports){
+},{}],48:[function(require,module,exports){
 (function (global){
 /**
  * @license
@@ -28240,7 +28264,143 @@ return jQuery;
 }.call(this));
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],52:[function(require,module,exports){
+},{}],49:[function(require,module,exports){
+/**
+ * microplugin.js
+ * Copyright (c) 2013 Brian Reavis & contributors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this
+ * file except in compliance with the License. You may obtain a copy of the License at:
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+ * ANY KIND, either express or implied. See the License for the specific language
+ * governing permissions and limitations under the License.
+ *
+ * @author Brian Reavis <brian@thirdroute.com>
+ */
+
+(function(root, factory) {
+	if (typeof define === 'function' && define.amd) {
+		define(factory);
+	} else if (typeof exports === 'object') {
+		module.exports = factory();
+	} else {
+		root.MicroPlugin = factory();
+	}
+}(this, function() {
+	var MicroPlugin = {};
+
+	MicroPlugin.mixin = function(Interface) {
+		Interface.plugins = {};
+
+		/**
+		 * Initializes the listed plugins (with options).
+		 * Acceptable formats:
+		 *
+		 * List (without options):
+		 *   ['a', 'b', 'c']
+		 *
+		 * List (with options):
+		 *   [{'name': 'a', options: {}}, {'name': 'b', options: {}}]
+		 *
+		 * Hash (with options):
+		 *   {'a': { ... }, 'b': { ... }, 'c': { ... }}
+		 *
+		 * @param {mixed} plugins
+		 */
+		Interface.prototype.initializePlugins = function(plugins) {
+			var i, n, key;
+			var self  = this;
+			var queue = [];
+
+			self.plugins = {
+				names     : [],
+				settings  : {},
+				requested : {},
+				loaded    : {}
+			};
+
+			if (utils.isArray(plugins)) {
+				for (i = 0, n = plugins.length; i < n; i++) {
+					if (typeof plugins[i] === 'string') {
+						queue.push(plugins[i]);
+					} else {
+						self.plugins.settings[plugins[i].name] = plugins[i].options;
+						queue.push(plugins[i].name);
+					}
+				}
+			} else if (plugins) {
+				for (key in plugins) {
+					if (plugins.hasOwnProperty(key)) {
+						self.plugins.settings[key] = plugins[key];
+						queue.push(key);
+					}
+				}
+			}
+
+			while (queue.length) {
+				self.require(queue.shift());
+			}
+		};
+
+		Interface.prototype.loadPlugin = function(name) {
+			var self    = this;
+			var plugins = self.plugins;
+			var plugin  = Interface.plugins[name];
+
+			if (!Interface.plugins.hasOwnProperty(name)) {
+				throw new Error('Unable to find "' +  name + '" plugin');
+			}
+
+			plugins.requested[name] = true;
+			plugins.loaded[name] = plugin.fn.apply(self, [self.plugins.settings[name] || {}]);
+			plugins.names.push(name);
+		};
+
+		/**
+		 * Initializes a plugin.
+		 *
+		 * @param {string} name
+		 */
+		Interface.prototype.require = function(name) {
+			var self = this;
+			var plugins = self.plugins;
+
+			if (!self.plugins.loaded.hasOwnProperty(name)) {
+				if (plugins.requested[name]) {
+					throw new Error('Plugin has circular dependency ("' + name + '")');
+				}
+				self.loadPlugin(name);
+			}
+
+			return plugins.loaded[name];
+		};
+
+		/**
+		 * Registers a plugin.
+		 *
+		 * @param {string} name
+		 * @param {function} fn
+		 */
+		Interface.define = function(name, fn) {
+			Interface.plugins[name] = {
+				'name' : name,
+				'fn'   : fn
+			};
+		};
+	};
+
+	var utils = {
+		isArray: Array.isArray || function(vArg) {
+			return Object.prototype.toString.call(vArg) === '[object Array]';
+		}
+	};
+
+	return MicroPlugin;
+}));
+},{}],50:[function(require,module,exports){
 /**
  * ES6 Promise wrapper constructor.
  *
@@ -28268,7 +28428,7 @@ ES6Promise.use = function(Promise) {
 
 module.exports = ES6Promise;
 
-},{}],53:[function(require,module,exports){
+},{}],51:[function(require,module,exports){
 (function (Buffer){
 /* eslint-env browser */
 
@@ -28371,7 +28531,7 @@ if (typeof window !== 'undefined') {
 }
 
 }).call(this,require("buffer").Buffer)
-},{"./document_provider.js":57,"./error":63,"./schema":77,"./schematype.js":90,"./types":96,"./utils.js":99,"./virtualtype":100,"buffer":41}],54:[function(require,module,exports){
+},{"./document_provider.js":55,"./error":61,"./schema":75,"./schematype.js":88,"./types":94,"./utils.js":97,"./virtualtype":98,"buffer":38}],52:[function(require,module,exports){
 /*!
  * Module dependencies.
  */
@@ -28476,7 +28636,7 @@ Document.prototype.constructor = Document;
 Document.ValidationError = ValidationError;
 module.exports = exports = Document;
 
-},{"./document":56,"./error":63,"./internal":74,"./schema":77,"./types/objectid":97,"./utils":99,"events":45}],55:[function(require,module,exports){
+},{"./document":54,"./error":61,"./internal":72,"./schema":75,"./types/objectid":95,"./utils":97,"events":42}],53:[function(require,module,exports){
 /*!
  * Module dependencies.
  */
@@ -28682,7 +28842,7 @@ function _cast(val, numbertype) {
   }
 }
 
-},{"./schema/index":84,"./utils":99}],56:[function(require,module,exports){
+},{"./schema/index":82,"./utils":97}],54:[function(require,module,exports){
 (function (process,Buffer){
 /*!
  * Module dependencies.
@@ -31105,7 +31265,7 @@ Document.ValidationError = ValidationError;
 module.exports = exports = Document;
 
 }).call(this,require('_process'),require("buffer").Buffer)
-},{"./error":63,"./error/objectExpected":68,"./error/strict":70,"./internal":74,"./promise_provider":76,"./schema":77,"./schema/mixed":85,"./schematype":90,"./types/array":92,"./types/documentarray":94,"./types/embedded":95,"./utils":99,"_process":47,"buffer":41,"events":45,"hooks-fixed":120,"util":49}],57:[function(require,module,exports){
+},{"./error":61,"./error/objectExpected":66,"./error/strict":68,"./internal":72,"./promise_provider":74,"./schema":75,"./schema/mixed":83,"./schematype":88,"./types/array":90,"./types/documentarray":92,"./types/embedded":93,"./utils":97,"_process":44,"buffer":38,"events":42,"hooks-fixed":118,"util":46}],55:[function(require,module,exports){
 'use strict';
 
 /* eslint-env browser */
@@ -31128,14 +31288,14 @@ module.exports = function() {
   return Document;
 };
 
-},{"./browserDocument.js":54,"./document.js":56}],58:[function(require,module,exports){
+},{"./browserDocument.js":52,"./document.js":54}],56:[function(require,module,exports){
 /*!
  * ignore
  */
 
 module.exports = function() {};
 
-},{}],59:[function(require,module,exports){
+},{}],57:[function(require,module,exports){
 
 /*!
  * Module dependencies.
@@ -31149,7 +31309,7 @@ var Binary = require('bson').Binary;
 
 module.exports = exports = Binary;
 
-},{"bson":104}],60:[function(require,module,exports){
+},{"bson":102}],58:[function(require,module,exports){
 /*!
  * Module exports.
  */
@@ -31158,7 +31318,7 @@ exports.Binary = require('./binary');
 exports.ObjectId = require('./objectid');
 exports.ReadPreference = require('./ReadPreference');
 
-},{"./ReadPreference":58,"./binary":59,"./objectid":61}],61:[function(require,module,exports){
+},{"./ReadPreference":56,"./binary":57,"./objectid":59}],59:[function(require,module,exports){
 
 /*!
  * [node-mongodb-native](https://github.com/mongodb/node-mongodb-native) ObjectId
@@ -31174,7 +31334,7 @@ var ObjectId = require('bson').ObjectID;
 
 module.exports = exports = ObjectId;
 
-},{"bson":104}],62:[function(require,module,exports){
+},{"bson":102}],60:[function(require,module,exports){
 (function (global){
 /*!
  * ignore
@@ -31195,7 +31355,7 @@ if (typeof window === 'undefined') {
 module.exports = driver;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./browser":60}],63:[function(require,module,exports){
+},{"./browser":58}],61:[function(require,module,exports){
 
 /**
  * MongooseError constructor
@@ -31252,7 +31412,7 @@ MongooseError.OverwriteModelError = require('./error/overwriteModel');
 MongooseError.MissingSchemaError = require('./error/missingSchema');
 MongooseError.DivergentArrayError = require('./error/divergentArray');
 
-},{"./error/cast":64,"./error/divergentArray":65,"./error/messages":66,"./error/missingSchema":67,"./error/overwriteModel":69,"./error/validation":71,"./error/validator":72,"./error/version":73}],64:[function(require,module,exports){
+},{"./error/cast":62,"./error/divergentArray":63,"./error/messages":64,"./error/missingSchema":65,"./error/overwriteModel":67,"./error/validation":69,"./error/validator":70,"./error/version":71}],62:[function(require,module,exports){
 /*!
  * Module dependencies.
  */
@@ -31296,7 +31456,7 @@ CastError.prototype.constructor = MongooseError;
 
 module.exports = CastError;
 
-},{"../error.js":63}],65:[function(require,module,exports){
+},{"../error.js":61}],63:[function(require,module,exports){
 
 /*!
  * Module dependencies.
@@ -31340,7 +31500,7 @@ DivergentArrayError.prototype.constructor = MongooseError;
 
 module.exports = DivergentArrayError;
 
-},{"../error.js":63}],66:[function(require,module,exports){
+},{"../error.js":61}],64:[function(require,module,exports){
 
 /**
  * The default built-in validator error messages. These may be customized.
@@ -31384,7 +31544,7 @@ msg.String.match = 'Path `{PATH}` is invalid ({VALUE}).';
 msg.String.minlength = 'Path `{PATH}` (`{VALUE}`) is shorter than the minimum allowed length ({MINLENGTH}).';
 msg.String.maxlength = 'Path `{PATH}` (`{VALUE}`) is longer than the maximum allowed length ({MAXLENGTH}).';
 
-},{}],67:[function(require,module,exports){
+},{}],65:[function(require,module,exports){
 
 /*!
  * Module dependencies.
@@ -31419,7 +31579,7 @@ MissingSchemaError.prototype.constructor = MongooseError;
 
 module.exports = MissingSchemaError;
 
-},{"../error.js":63}],68:[function(require,module,exports){
+},{"../error.js":61}],66:[function(require,module,exports){
 /*!
  * Module dependencies.
  */
@@ -31456,7 +31616,7 @@ ObjectExpectedError.prototype.constructor = MongooseError;
 
 module.exports = ObjectExpectedError;
 
-},{"../error.js":63}],69:[function(require,module,exports){
+},{"../error.js":61}],67:[function(require,module,exports){
 
 /*!
  * Module dependencies.
@@ -31489,7 +31649,7 @@ OverwriteModelError.prototype.constructor = MongooseError;
 
 module.exports = OverwriteModelError;
 
-},{"../error.js":63}],70:[function(require,module,exports){
+},{"../error.js":61}],68:[function(require,module,exports){
 /*!
  * Module dependencies.
  */
@@ -31526,7 +31686,7 @@ StrictModeError.prototype.constructor = MongooseError;
 
 module.exports = StrictModeError;
 
-},{"../error.js":63}],71:[function(require,module,exports){
+},{"../error.js":61}],69:[function(require,module,exports){
 /*!
  * Module requirements
  */
@@ -31591,7 +31751,7 @@ ValidationError.prototype.toString = function() {
 
 module.exports = exports = ValidationError;
 
-},{"../error.js":63}],72:[function(require,module,exports){
+},{"../error.js":61}],70:[function(require,module,exports){
 /*!
  * Module dependencies.
  */
@@ -31675,7 +31835,7 @@ ValidatorError.prototype.toString = function() {
 
 module.exports = ValidatorError;
 
-},{"../error.js":63}],73:[function(require,module,exports){
+},{"../error.js":61}],71:[function(require,module,exports){
 
 /*!
  * Module dependencies.
@@ -31709,7 +31869,7 @@ VersionError.prototype.constructor = MongooseError;
 
 module.exports = VersionError;
 
-},{"../error.js":63}],74:[function(require,module,exports){
+},{"../error.js":61}],72:[function(require,module,exports){
 /*!
  * Dependencies
  */
@@ -31742,7 +31902,7 @@ function InternalCache() {
   this.fullPath = undefined;
 }
 
-},{"./statemachine":91}],75:[function(require,module,exports){
+},{"./statemachine":89}],73:[function(require,module,exports){
 /*!
  * Module dependencies
  */
@@ -32035,7 +32195,7 @@ Promise.prototype.addErrback = Promise.prototype.onReject;
 
 module.exports = Promise;
 
-},{"mpromise":124,"util":49}],76:[function(require,module,exports){
+},{"mpromise":122,"util":46}],74:[function(require,module,exports){
 /*!
  * Module dependencies.
  */
@@ -32088,7 +32248,7 @@ Promise.reset = function() {
 
 module.exports = Promise;
 
-},{"./ES6Promise":52,"./promise":75,"mquery":129}],77:[function(require,module,exports){
+},{"./ES6Promise":50,"./promise":73,"mquery":127}],75:[function(require,module,exports){
 (function (Buffer){
 /*!
  * Module dependencies.
@@ -33493,7 +33653,7 @@ Schema.Types = MongooseTypes = require('./schema/index');
 exports.ObjectId = MongooseTypes.ObjectId;
 
 }).call(this,require("buffer").Buffer)
-},{"./drivers":62,"./schema/index":84,"./utils":99,"./virtualtype":100,"async":101,"buffer":41,"events":45,"kareem":121}],78:[function(require,module,exports){
+},{"./drivers":60,"./schema/index":82,"./utils":97,"./virtualtype":98,"async":99,"buffer":38,"events":42,"kareem":119}],76:[function(require,module,exports){
 /*!
  * Module dependencies.
  */
@@ -33888,7 +34048,7 @@ handle.$regex = SchemaArray.prototype.castForQuery;
 
 module.exports = SchemaArray;
 
-},{"../cast":55,"../schematype":90,"../types":96,"../utils":99,"./boolean":79,"./buffer":80,"./date":81,"./mixed":85,"./number":86,"./objectid":87,"./string":89}],79:[function(require,module,exports){
+},{"../cast":53,"../schematype":88,"../types":94,"../utils":97,"./boolean":77,"./buffer":78,"./date":79,"./mixed":83,"./number":84,"./objectid":85,"./string":87}],77:[function(require,module,exports){
 /*!
  * Module dependencies.
  */
@@ -33993,7 +34153,7 @@ SchemaBoolean.prototype.castForQuery = function($conditional, val) {
 
 module.exports = SchemaBoolean;
 
-},{"../schematype":90,"../utils":99}],80:[function(require,module,exports){
+},{"../schematype":88,"../utils":97}],78:[function(require,module,exports){
 (function (Buffer){
 /*!
  * Module dependencies.
@@ -34185,7 +34345,7 @@ SchemaBuffer.prototype.castForQuery = function($conditional, val) {
 module.exports = SchemaBuffer;
 
 }).call(this,require("buffer").Buffer)
-},{"../schematype":90,"../types":96,"../utils":99,"./../document":56,"./operators/bitwise":88,"buffer":41}],81:[function(require,module,exports){
+},{"../schematype":88,"../types":94,"../utils":97,"./../document":54,"./operators/bitwise":86,"buffer":38}],79:[function(require,module,exports){
 /*!
  * Module requirements.
  */
@@ -34479,7 +34639,7 @@ SchemaDate.prototype.castForQuery = function($conditional, val) {
 
 module.exports = SchemaDate;
 
-},{"../error":63,"../schematype":90,"../utils":99}],82:[function(require,module,exports){
+},{"../error":61,"../schematype":88,"../utils":97}],80:[function(require,module,exports){
 /* eslint no-empty: 1 */
 
 /*!
@@ -34771,7 +34931,7 @@ function scopePaths(array, fields, init) {
 
 module.exports = DocumentArray;
 
-},{"../error/cast":64,"../schematype":90,"../types/documentarray":94,"../types/embedded":95,"./array":78}],83:[function(require,module,exports){
+},{"../error/cast":62,"../schematype":88,"../types/documentarray":92,"../types/embedded":93,"./array":76}],81:[function(require,module,exports){
 var SchemaType = require('../schematype');
 var Subdocument = require('../types/subdocument');
 
@@ -34898,7 +35058,7 @@ Embedded.prototype.doValidateSync = function(value) {
   return value.validateSync();
 };
 
-},{"../schematype":90,"../types/subdocument":98}],84:[function(require,module,exports){
+},{"../schematype":88,"../types/subdocument":96}],82:[function(require,module,exports){
 
 /*!
  * Module exports.
@@ -34930,7 +35090,7 @@ exports.Oid = exports.ObjectId;
 exports.Object = exports.Mixed;
 exports.Bool = exports.Boolean;
 
-},{"./array":78,"./boolean":79,"./buffer":80,"./date":81,"./documentarray":82,"./embedded":83,"./mixed":85,"./number":86,"./objectid":87,"./string":89}],85:[function(require,module,exports){
+},{"./array":76,"./boolean":77,"./buffer":78,"./date":79,"./documentarray":80,"./embedded":81,"./mixed":83,"./number":84,"./objectid":85,"./string":87}],83:[function(require,module,exports){
 /*!
  * Module dependencies.
  */
@@ -35012,7 +35172,7 @@ Mixed.prototype.castForQuery = function($cond, val) {
 
 module.exports = Mixed;
 
-},{"../schematype":90,"../utils":99}],86:[function(require,module,exports){
+},{"../schematype":88,"../utils":97}],84:[function(require,module,exports){
 (function (Buffer){
 /*!
  * Module requirements.
@@ -35306,7 +35466,7 @@ SchemaNumber.prototype.castForQuery = function($conditional, val) {
 module.exports = SchemaNumber;
 
 }).call(this,require("buffer").Buffer)
-},{"../error":63,"../schematype":90,"../utils":99,"./../document":56,"./operators/bitwise":88,"buffer":41}],87:[function(require,module,exports){
+},{"../error":61,"../schematype":88,"../utils":97,"./../document":54,"./operators/bitwise":86,"buffer":38}],85:[function(require,module,exports){
 (function (Buffer){
 /* eslint no-empty: 1 */
 
@@ -35517,7 +35677,7 @@ function resetId(v) {
 module.exports = ObjectId;
 
 }).call(this,require("buffer").Buffer)
-},{"../schematype":90,"../types/objectid":97,"../utils":99,"./../document":56,"buffer":41}],88:[function(require,module,exports){
+},{"../schematype":88,"../types/objectid":95,"../utils":97,"./../document":54,"buffer":38}],86:[function(require,module,exports){
 (function (Buffer){
 /*!
  * Module requirements.
@@ -35557,7 +35717,7 @@ function _castNumber(path, num) {
 module.exports = handleBitwiseOperator;
 
 }).call(this,require("buffer").Buffer)
-},{"../../error/cast":64,"buffer":41}],89:[function(require,module,exports){
+},{"../../error/cast":62,"buffer":38}],87:[function(require,module,exports){
 (function (Buffer){
 /*!
  * Module dependencies.
@@ -36067,7 +36227,7 @@ SchemaString.prototype.castForQuery = function($conditional, val) {
 module.exports = SchemaString;
 
 }).call(this,require("buffer").Buffer)
-},{"../error":63,"../schematype":90,"../utils":99,"./../document":56,"buffer":41}],90:[function(require,module,exports){
+},{"../error":61,"../schematype":88,"../utils":97,"./../document":54,"buffer":38}],88:[function(require,module,exports){
 (function (Buffer){
 /*!
  * Module dependencies.
@@ -36973,7 +37133,7 @@ exports.CastError = CastError;
 exports.ValidatorError = ValidatorError;
 
 }).call(this,require("buffer").Buffer)
-},{"./error":63,"./utils":99,"buffer":41}],91:[function(require,module,exports){
+},{"./error":61,"./utils":97,"buffer":38}],89:[function(require,module,exports){
 
 /*!
  * Module dependencies.
@@ -37153,7 +37313,7 @@ StateMachine.prototype.map = function map() {
   return this.map.apply(this, arguments);
 };
 
-},{"./utils":99}],92:[function(require,module,exports){
+},{"./utils":97}],90:[function(require,module,exports){
 (function (Buffer){
 /*!
  * Module dependencies.
@@ -37945,7 +38105,7 @@ MongooseArray.mixin.remove = MongooseArray.mixin.pull;
 module.exports = exports = MongooseArray;
 
 }).call(this,require("buffer").Buffer)
-},{"../document":56,"../utils":99,"./embedded":95,"./objectid":97,"buffer":41}],93:[function(require,module,exports){
+},{"../document":54,"../utils":97,"./embedded":93,"./objectid":95,"buffer":38}],91:[function(require,module,exports){
 (function (Buffer){
 /*!
  * Module dependencies.
@@ -38222,7 +38382,7 @@ MongooseBuffer.Binary = Binary;
 module.exports = MongooseBuffer;
 
 }).call(this,require("buffer").Buffer)
-},{"../drivers":62,"../utils":99,"buffer":41}],94:[function(require,module,exports){
+},{"../drivers":60,"../utils":97,"buffer":38}],92:[function(require,module,exports){
 (function (Buffer){
 /*!
  * Module dependencies.
@@ -38471,7 +38631,7 @@ MongooseDocumentArray.mixin = {
 module.exports = MongooseDocumentArray;
 
 }).call(this,require("buffer").Buffer)
-},{"../document":56,"../schema/objectid":87,"../utils":99,"./array":92,"./objectid":97,"buffer":41}],95:[function(require,module,exports){
+},{"../document":54,"../schema/objectid":85,"../utils":97,"./array":90,"./objectid":95,"buffer":38}],93:[function(require,module,exports){
 /* eslint no-func-assign: 1 */
 
 /*!
@@ -38793,7 +38953,7 @@ EmbeddedDocument.prototype.parentArray = function() {
 
 module.exports = EmbeddedDocument;
 
-},{"../document_provider":57,"../promise_provider":76}],96:[function(require,module,exports){
+},{"../document_provider":55,"../promise_provider":74}],94:[function(require,module,exports){
 
 /*!
  * Module exports.
@@ -38810,7 +38970,7 @@ exports.ObjectId = require('./objectid');
 
 exports.Subdocument = require('./subdocument');
 
-},{"./array":92,"./buffer":93,"./documentarray":94,"./embedded":95,"./objectid":97,"./subdocument":98}],97:[function(require,module,exports){
+},{"./array":90,"./buffer":91,"./documentarray":92,"./embedded":93,"./objectid":95,"./subdocument":96}],95:[function(require,module,exports){
 /**
  * ObjectId type constructor
  *
@@ -38825,7 +38985,7 @@ var ObjectId = require('../drivers').ObjectId;
 
 module.exports = ObjectId;
 
-},{"../drivers":62}],98:[function(require,module,exports){
+},{"../drivers":60}],96:[function(require,module,exports){
 var Document = require('../document');
 var PromiseProvider = require('../promise_provider');
 
@@ -38951,7 +39111,7 @@ function registerRemoveListener(sub) {
   owner.on('remove', emitRemove);
 }
 
-},{"../document":56,"../promise_provider":76}],99:[function(require,module,exports){
+},{"../document":54,"../promise_provider":74}],97:[function(require,module,exports){
 (function (process,Buffer){
 /*!
  * Module dependencies.
@@ -39800,7 +39960,7 @@ exports.each = function(arr, fn) {
 };
 
 }).call(this,require('_process'),require("buffer").Buffer)
-},{"./document":56,"./types":96,"./types/objectid":97,"_process":47,"buffer":41,"mpath":122,"ms":137,"regexp-clone":138,"sliced":139}],100:[function(require,module,exports){
+},{"./document":54,"./types":94,"./types/objectid":95,"_process":44,"buffer":38,"mpath":120,"ms":135,"regexp-clone":136,"sliced":137}],98:[function(require,module,exports){
 
 /**
  * VirtualType constructor
@@ -39905,7 +40065,7 @@ VirtualType.prototype.applySetters = function(value, scope) {
 
 module.exports = VirtualType;
 
-},{}],101:[function(require,module,exports){
+},{}],99:[function(require,module,exports){
 (function (process,global){
 /*!
  * async
@@ -41174,7 +41334,7 @@ module.exports = VirtualType;
 }());
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"_process":47}],102:[function(require,module,exports){
+},{"_process":44}],100:[function(require,module,exports){
 /**
  * Module dependencies.
  * @ignore
@@ -41520,7 +41680,7 @@ Binary.SUBTYPE_USER_DEFINED = 128;
 module.exports = Binary;
 module.exports.Binary = Binary;
 
-},{"buffer":41}],103:[function(require,module,exports){
+},{"buffer":38}],101:[function(require,module,exports){
 (function (process){
 /**
  * Binary Parser.
@@ -41909,7 +42069,7 @@ BinaryParser.Buffer = BinaryParserBuffer;
 exports.BinaryParser = BinaryParser;
 
 }).call(this,require('_process'))
-},{"_process":47,"util":49}],104:[function(require,module,exports){
+},{"_process":44,"util":46}],102:[function(require,module,exports){
 (function (Buffer){
 // "use strict"
 
@@ -42236,7 +42396,7 @@ module.exports.MaxKey = MaxKey;
 module.exports.BSONRegExp = BSONRegExp;
 
 }).call(this,require("buffer").Buffer)
-},{"./binary":102,"./code":105,"./db_ref":106,"./double":107,"./float_parser":108,"./long":109,"./map":110,"./max_key":111,"./min_key":112,"./objectid":113,"./parser/calculate_size":114,"./parser/deserializer":115,"./parser/serializer":116,"./regexp":117,"./symbol":118,"./timestamp":119,"buffer":41}],105:[function(require,module,exports){
+},{"./binary":100,"./code":103,"./db_ref":104,"./double":105,"./float_parser":106,"./long":107,"./map":108,"./max_key":109,"./min_key":110,"./objectid":111,"./parser/calculate_size":112,"./parser/deserializer":113,"./parser/serializer":114,"./regexp":115,"./symbol":116,"./timestamp":117,"buffer":38}],103:[function(require,module,exports){
 /**
  * A class representation of the BSON Code type.
  *
@@ -42261,7 +42421,7 @@ Code.prototype.toJSON = function() {
 
 module.exports = Code;
 module.exports.Code = Code;
-},{}],106:[function(require,module,exports){
+},{}],104:[function(require,module,exports){
 /**
  * A class representation of the BSON DBRef type.
  *
@@ -42294,7 +42454,7 @@ DBRef.prototype.toJSON = function() {
 
 module.exports = DBRef;
 module.exports.DBRef = DBRef;
-},{}],107:[function(require,module,exports){
+},{}],105:[function(require,module,exports){
 /**
  * A class representation of the BSON Double type.
  *
@@ -42328,7 +42488,7 @@ Double.prototype.toJSON = function() {
 
 module.exports = Double;
 module.exports.Double = Double;
-},{}],108:[function(require,module,exports){
+},{}],106:[function(require,module,exports){
 // Copyright (c) 2008, Fair Oaks Labs, Inc.
 // All rights reserved.
 // 
@@ -42450,7 +42610,7 @@ var writeIEEE754 = function(buffer, value, offset, endian, mLen, nBytes) {
 
 exports.readIEEE754 = readIEEE754;
 exports.writeIEEE754 = writeIEEE754;
-},{}],109:[function(require,module,exports){
+},{}],107:[function(require,module,exports){
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -43307,7 +43467,7 @@ Long.TWO_PWR_24_ = Long.fromInt(1 << 24);
  */
 module.exports = Long;
 module.exports.Long = Long;
-},{}],110:[function(require,module,exports){
+},{}],108:[function(require,module,exports){
 (function (global){
 "use strict"
 
@@ -43436,7 +43596,7 @@ if(typeof global.Map !== 'undefined') {
   module.exports.Map = Map;
 }
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],111:[function(require,module,exports){
+},{}],109:[function(require,module,exports){
 /**
  * A class representation of the BSON MaxKey type.
  *
@@ -43451,7 +43611,7 @@ function MaxKey() {
 
 module.exports = MaxKey;
 module.exports.MaxKey = MaxKey;
-},{}],112:[function(require,module,exports){
+},{}],110:[function(require,module,exports){
 /**
  * A class representation of the BSON MinKey type.
  *
@@ -43466,7 +43626,7 @@ function MinKey() {
 
 module.exports = MinKey;
 module.exports.MinKey = MinKey;
-},{}],113:[function(require,module,exports){
+},{}],111:[function(require,module,exports){
 (function (process){
 /**
  * Module dependencies.
@@ -43748,7 +43908,7 @@ module.exports.ObjectID = ObjectID;
 module.exports.ObjectId = ObjectID;
 
 }).call(this,require('_process'))
-},{"./binary_parser":103,"_process":47}],114:[function(require,module,exports){
+},{"./binary_parser":101,"_process":44}],112:[function(require,module,exports){
 (function (Buffer){
 "use strict"
 
@@ -44062,7 +44222,7 @@ var JS_INT_MIN_LONG = Long.fromNumber(-0x20000000000000);  // Any integer down t
 module.exports = calculateObjectSize;
 
 }).call(this,require("buffer").Buffer)
-},{"../binary":102,"../code":105,"../db_ref":106,"../double":107,"../float_parser":108,"../long":109,"../max_key":111,"../min_key":112,"../objectid":113,"../regexp":117,"../symbol":118,"../timestamp":119,"buffer":41}],115:[function(require,module,exports){
+},{"../binary":100,"../code":103,"../db_ref":104,"../double":105,"../float_parser":106,"../long":107,"../max_key":109,"../min_key":110,"../objectid":111,"../regexp":115,"../symbol":116,"../timestamp":117,"buffer":38}],113:[function(require,module,exports){
 "use strict"
 
 var readIEEE754 = require('../float_parser').readIEEE754,
@@ -44589,7 +44749,7 @@ var JS_INT_MIN_LONG = Long.fromNumber(-0x20000000000000);  // Any integer down t
 
 module.exports = deserialize
 
-},{"../binary":102,"../code":105,"../db_ref":106,"../double":107,"../float_parser":108,"../long":109,"../max_key":111,"../min_key":112,"../objectid":113,"../regexp":117,"../symbol":118,"../timestamp":119,"util":49}],116:[function(require,module,exports){
+},{"../binary":100,"../code":103,"../db_ref":104,"../double":105,"../float_parser":106,"../long":107,"../max_key":109,"../min_key":110,"../objectid":111,"../regexp":115,"../symbol":116,"../timestamp":117,"util":46}],114:[function(require,module,exports){
 (function (Buffer){
 "use strict"
 
@@ -45505,7 +45665,7 @@ var JS_INT_MIN_LONG = Long.fromNumber(-0x20000000000000);  // Any integer down t
 module.exports = serializeInto;
 
 }).call(this,require("buffer").Buffer)
-},{"../binary":102,"../code":105,"../db_ref":106,"../double":107,"../float_parser":108,"../long":109,"../map":110,"../max_key":111,"../min_key":112,"../objectid":113,"../regexp":117,"../symbol":118,"../timestamp":119,"buffer":41}],117:[function(require,module,exports){
+},{"../binary":100,"../code":103,"../db_ref":104,"../double":105,"../float_parser":106,"../long":107,"../map":108,"../max_key":109,"../min_key":110,"../objectid":111,"../regexp":115,"../symbol":116,"../timestamp":117,"buffer":38}],115:[function(require,module,exports){
 /**
  * A class representation of the BSON RegExp type.
  *
@@ -45536,7 +45696,7 @@ function BSONRegExp(pattern, options) {
 
 module.exports = BSONRegExp;
 module.exports.BSONRegExp = BSONRegExp;
-},{}],118:[function(require,module,exports){
+},{}],116:[function(require,module,exports){
 /**
  * A class representation of the BSON Symbol type.
  *
@@ -45584,7 +45744,7 @@ Symbol.prototype.toJSON = function() {
 
 module.exports = Symbol;
 module.exports.Symbol = Symbol;
-},{}],119:[function(require,module,exports){
+},{}],117:[function(require,module,exports){
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -46441,7 +46601,7 @@ Timestamp.TWO_PWR_24_ = Timestamp.fromInt(1 << 24);
  */
 module.exports = Timestamp;
 module.exports.Timestamp = Timestamp;
-},{}],120:[function(require,module,exports){
+},{}],118:[function(require,module,exports){
 // TODO Add in pre and post skipping options
 module.exports = {
   /**
@@ -46634,7 +46794,7 @@ function once (fn, scope) {
   };
 }
 
-},{}],121:[function(require,module,exports){
+},{}],119:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -46867,10 +47027,10 @@ Kareem.prototype.clone = function() {
 module.exports = Kareem;
 
 }).call(this,require('_process'))
-},{"_process":47}],122:[function(require,module,exports){
+},{"_process":44}],120:[function(require,module,exports){
 module.exports = exports = require('./lib');
 
-},{"./lib":123}],123:[function(require,module,exports){
+},{"./lib":121}],121:[function(require,module,exports){
 /**
  * Returns the value of object `o` at the given `path`.
  *
@@ -47087,7 +47247,7 @@ function K (v) {
   return v;
 }
 
-},{}],124:[function(require,module,exports){
+},{}],122:[function(require,module,exports){
 (function (process){
 'use strict';
 var util = require('util');
@@ -47536,7 +47696,7 @@ Promise.deferred = function deferred() {
 /* End A+ tests adapter bit */
 
 }).call(this,require('_process'))
-},{"_process":47,"events":45,"util":49}],125:[function(require,module,exports){
+},{"_process":44,"events":42,"util":46}],123:[function(require,module,exports){
 'use strict';
 
 /**
@@ -47580,7 +47740,7 @@ function notImplemented (method) {
 }
 
 
-},{}],126:[function(require,module,exports){
+},{}],124:[function(require,module,exports){
 'use strict';
 
 var env = require('../env')
@@ -47595,7 +47755,7 @@ module.exports =
   require('./collection');
 
 
-},{"../env":128,"./collection":125,"./node":127}],127:[function(require,module,exports){
+},{"../env":126,"./collection":123,"./node":125}],125:[function(require,module,exports){
 'use strict';
 
 /**
@@ -47705,7 +47865,7 @@ NodeCollection.prototype.findCursor = function(match, findOptions) {
 module.exports = exports = NodeCollection;
 
 
-},{"../utils":131,"./collection":125}],128:[function(require,module,exports){
+},{"../utils":129,"./collection":123}],126:[function(require,module,exports){
 (function (process,global,Buffer){
 'use strict';
 
@@ -47731,7 +47891,7 @@ exports.type = exports.isNode ? 'node'
   : 'unknown'
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {},require("buffer").Buffer)
-},{"_process":47,"buffer":41}],129:[function(require,module,exports){
+},{"_process":44,"buffer":38}],127:[function(require,module,exports){
 'use strict';
 
 /**
@@ -50453,7 +50613,7 @@ module.exports = exports = Query;
 // TODO
 // test utils
 
-},{"./collection":126,"./collection/collection":125,"./env":128,"./permissions":130,"./utils":131,"assert":40,"bluebird":132,"debug":133,"sliced":135,"util":49}],130:[function(require,module,exports){
+},{"./collection":124,"./collection/collection":123,"./env":126,"./permissions":128,"./utils":129,"assert":37,"bluebird":130,"debug":131,"sliced":133,"util":46}],128:[function(require,module,exports){
 'use strict';
 
 var denied = exports;
@@ -50543,7 +50703,7 @@ denied.count.maxScan =
 denied.count.snapshot =
 denied.count.tailable = true;
 
-},{}],131:[function(require,module,exports){
+},{}],129:[function(require,module,exports){
 (function (process,Buffer){
 'use strict';
 
@@ -50889,7 +51049,7 @@ exports.isArgumentsObject = function(v) {
 };
 
 }).call(this,require('_process'),require("buffer").Buffer)
-},{"_process":47,"buffer":41,"regexp-clone":138}],132:[function(require,module,exports){
+},{"_process":44,"buffer":38,"regexp-clone":136}],130:[function(require,module,exports){
 (function (process,global){
 /* @preserve
  * The MIT License (MIT)
@@ -55779,7 +55939,7 @@ module.exports = ret;
 },{"./es5.js":14}]},{},[4])(4)
 });                    ;if (typeof window !== 'undefined' && window !== null) {                               window.P = window.Promise;                                                     } else if (typeof self !== 'undefined' && self !== null) {                             self.P = self.Promise;                                                         }
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"_process":47}],133:[function(require,module,exports){
+},{"_process":44}],131:[function(require,module,exports){
 
 /**
  * This is the web browser implementation of `debug()`.
@@ -55949,7 +56109,7 @@ function localstorage(){
   } catch (e) {}
 }
 
-},{"./debug":134}],134:[function(require,module,exports){
+},{"./debug":132}],132:[function(require,module,exports){
 
 /**
  * This is the common logic for both the Node.js and web browser
@@ -56148,10 +56308,10 @@ function coerce(val) {
   return val;
 }
 
-},{"ms":137}],135:[function(require,module,exports){
+},{"ms":135}],133:[function(require,module,exports){
 module.exports = exports = require('./lib/sliced');
 
-},{"./lib/sliced":136}],136:[function(require,module,exports){
+},{"./lib/sliced":134}],134:[function(require,module,exports){
 
 /**
  * An Array.prototype.slice.call(arguments) alternative
@@ -56186,7 +56346,7 @@ module.exports = function (args, slice, sliceEnd) {
 }
 
 
-},{}],137:[function(require,module,exports){
+},{}],135:[function(require,module,exports){
 /**
  * Helpers.
  */
@@ -56313,7 +56473,7 @@ function plural(ms, n, name) {
   return Math.ceil(ms / n) + ' ' + name + 's';
 }
 
-},{}],138:[function(require,module,exports){
+},{}],136:[function(require,module,exports){
 
 var toString = Object.prototype.toString;
 
@@ -56335,14 +56495,14 @@ module.exports = exports = function (regexp) {
 }
 
 
-},{}],139:[function(require,module,exports){
-arguments[4][136][0].apply(exports,arguments)
-},{"dup":136}],140:[function(require,module,exports){
+},{}],137:[function(require,module,exports){
+arguments[4][134][0].apply(exports,arguments)
+},{"dup":134}],138:[function(require,module,exports){
 'use strict';
 
 module.exports = require('react/lib/ReactDOM');
 
-},{"react/lib/ReactDOM":175}],141:[function(require,module,exports){
+},{"react/lib/ReactDOM":173}],139:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -56379,7 +56539,7 @@ var AutoFocusUtils = {
 };
 
 module.exports = AutoFocusUtils;
-},{"./ReactMount":205,"./findDOMNode":248,"fbjs/lib/focusNode":278}],142:[function(require,module,exports){
+},{"./ReactMount":203,"./findDOMNode":246,"fbjs/lib/focusNode":276}],140:[function(require,module,exports){
 /**
  * Copyright 2013-2015 Facebook, Inc.
  * All rights reserved.
@@ -56785,7 +56945,7 @@ var BeforeInputEventPlugin = {
 };
 
 module.exports = BeforeInputEventPlugin;
-},{"./EventConstants":154,"./EventPropagators":158,"./FallbackCompositionState":159,"./SyntheticCompositionEvent":230,"./SyntheticInputEvent":234,"fbjs/lib/ExecutionEnvironment":270,"fbjs/lib/keyOf":288}],143:[function(require,module,exports){
+},{"./EventConstants":152,"./EventPropagators":156,"./FallbackCompositionState":157,"./SyntheticCompositionEvent":228,"./SyntheticInputEvent":232,"fbjs/lib/ExecutionEnvironment":268,"fbjs/lib/keyOf":286}],141:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -56925,7 +57085,7 @@ var CSSProperty = {
 };
 
 module.exports = CSSProperty;
-},{}],144:[function(require,module,exports){
+},{}],142:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -57103,7 +57263,7 @@ ReactPerf.measureMethods(CSSPropertyOperations, 'CSSPropertyOperations', {
 
 module.exports = CSSPropertyOperations;
 }).call(this,require('_process'))
-},{"./CSSProperty":143,"./ReactPerf":211,"./dangerousStyleValue":245,"_process":47,"fbjs/lib/ExecutionEnvironment":270,"fbjs/lib/camelizeStyleName":272,"fbjs/lib/hyphenateStyleName":283,"fbjs/lib/memoizeStringOnly":290,"fbjs/lib/warning":295}],145:[function(require,module,exports){
+},{"./CSSProperty":141,"./ReactPerf":209,"./dangerousStyleValue":243,"_process":44,"fbjs/lib/ExecutionEnvironment":268,"fbjs/lib/camelizeStyleName":270,"fbjs/lib/hyphenateStyleName":281,"fbjs/lib/memoizeStringOnly":288,"fbjs/lib/warning":293}],143:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -57199,7 +57359,7 @@ PooledClass.addPoolingTo(CallbackQueue);
 
 module.exports = CallbackQueue;
 }).call(this,require('_process'))
-},{"./Object.assign":162,"./PooledClass":163,"_process":47,"fbjs/lib/invariant":284}],146:[function(require,module,exports){
+},{"./Object.assign":160,"./PooledClass":161,"_process":44,"fbjs/lib/invariant":282}],144:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -57521,7 +57681,7 @@ var ChangeEventPlugin = {
 };
 
 module.exports = ChangeEventPlugin;
-},{"./EventConstants":154,"./EventPluginHub":155,"./EventPropagators":158,"./ReactUpdates":223,"./SyntheticEvent":232,"./getEventTarget":254,"./isEventSupported":259,"./isTextInputElement":260,"fbjs/lib/ExecutionEnvironment":270,"fbjs/lib/keyOf":288}],147:[function(require,module,exports){
+},{"./EventConstants":152,"./EventPluginHub":153,"./EventPropagators":156,"./ReactUpdates":221,"./SyntheticEvent":230,"./getEventTarget":252,"./isEventSupported":257,"./isTextInputElement":258,"fbjs/lib/ExecutionEnvironment":268,"fbjs/lib/keyOf":286}],145:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -57545,7 +57705,7 @@ var ClientReactRootIndex = {
 };
 
 module.exports = ClientReactRootIndex;
-},{}],148:[function(require,module,exports){
+},{}],146:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -57677,7 +57837,7 @@ ReactPerf.measureMethods(DOMChildrenOperations, 'DOMChildrenOperations', {
 
 module.exports = DOMChildrenOperations;
 }).call(this,require('_process'))
-},{"./Danger":151,"./ReactMultiChildUpdateTypes":207,"./ReactPerf":211,"./setInnerHTML":264,"./setTextContent":265,"_process":47,"fbjs/lib/invariant":284}],149:[function(require,module,exports){
+},{"./Danger":149,"./ReactMultiChildUpdateTypes":205,"./ReactPerf":209,"./setInnerHTML":262,"./setTextContent":263,"_process":44,"fbjs/lib/invariant":282}],147:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -57914,7 +58074,7 @@ var DOMProperty = {
 
 module.exports = DOMProperty;
 }).call(this,require('_process'))
-},{"_process":47,"fbjs/lib/invariant":284}],150:[function(require,module,exports){
+},{"_process":44,"fbjs/lib/invariant":282}],148:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -58142,7 +58302,7 @@ ReactPerf.measureMethods(DOMPropertyOperations, 'DOMPropertyOperations', {
 
 module.exports = DOMPropertyOperations;
 }).call(this,require('_process'))
-},{"./DOMProperty":149,"./ReactPerf":211,"./quoteAttributeValueForBrowser":262,"_process":47,"fbjs/lib/warning":295}],151:[function(require,module,exports){
+},{"./DOMProperty":147,"./ReactPerf":209,"./quoteAttributeValueForBrowser":260,"_process":44,"fbjs/lib/warning":293}],149:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -58290,7 +58450,7 @@ var Danger = {
 
 module.exports = Danger;
 }).call(this,require('_process'))
-},{"_process":47,"fbjs/lib/ExecutionEnvironment":270,"fbjs/lib/createNodesFromMarkup":275,"fbjs/lib/emptyFunction":276,"fbjs/lib/getMarkupWrap":280,"fbjs/lib/invariant":284}],152:[function(require,module,exports){
+},{"_process":44,"fbjs/lib/ExecutionEnvironment":268,"fbjs/lib/createNodesFromMarkup":273,"fbjs/lib/emptyFunction":274,"fbjs/lib/getMarkupWrap":278,"fbjs/lib/invariant":282}],150:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -58318,7 +58478,7 @@ var keyOf = require('fbjs/lib/keyOf');
 var DefaultEventPluginOrder = [keyOf({ ResponderEventPlugin: null }), keyOf({ SimpleEventPlugin: null }), keyOf({ TapEventPlugin: null }), keyOf({ EnterLeaveEventPlugin: null }), keyOf({ ChangeEventPlugin: null }), keyOf({ SelectEventPlugin: null }), keyOf({ BeforeInputEventPlugin: null })];
 
 module.exports = DefaultEventPluginOrder;
-},{"fbjs/lib/keyOf":288}],153:[function(require,module,exports){
+},{"fbjs/lib/keyOf":286}],151:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -58443,7 +58603,7 @@ var EnterLeaveEventPlugin = {
 };
 
 module.exports = EnterLeaveEventPlugin;
-},{"./EventConstants":154,"./EventPropagators":158,"./ReactMount":205,"./SyntheticMouseEvent":236,"fbjs/lib/keyOf":288}],154:[function(require,module,exports){
+},{"./EventConstants":152,"./EventPropagators":156,"./ReactMount":203,"./SyntheticMouseEvent":234,"fbjs/lib/keyOf":286}],152:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -58536,7 +58696,7 @@ var EventConstants = {
 };
 
 module.exports = EventConstants;
-},{"fbjs/lib/keyMirror":287}],155:[function(require,module,exports){
+},{"fbjs/lib/keyMirror":285}],153:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -58818,7 +58978,7 @@ var EventPluginHub = {
 
 module.exports = EventPluginHub;
 }).call(this,require('_process'))
-},{"./EventPluginRegistry":156,"./EventPluginUtils":157,"./ReactErrorUtils":196,"./accumulateInto":242,"./forEachAccumulated":250,"_process":47,"fbjs/lib/invariant":284,"fbjs/lib/warning":295}],156:[function(require,module,exports){
+},{"./EventPluginRegistry":154,"./EventPluginUtils":155,"./ReactErrorUtils":194,"./accumulateInto":240,"./forEachAccumulated":248,"_process":44,"fbjs/lib/invariant":282,"fbjs/lib/warning":293}],154:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -59041,7 +59201,7 @@ var EventPluginRegistry = {
 
 module.exports = EventPluginRegistry;
 }).call(this,require('_process'))
-},{"_process":47,"fbjs/lib/invariant":284}],157:[function(require,module,exports){
+},{"_process":44,"fbjs/lib/invariant":282}],155:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -59246,7 +59406,7 @@ var EventPluginUtils = {
 
 module.exports = EventPluginUtils;
 }).call(this,require('_process'))
-},{"./EventConstants":154,"./ReactErrorUtils":196,"_process":47,"fbjs/lib/invariant":284,"fbjs/lib/warning":295}],158:[function(require,module,exports){
+},{"./EventConstants":152,"./ReactErrorUtils":194,"_process":44,"fbjs/lib/invariant":282,"fbjs/lib/warning":293}],156:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -59384,7 +59544,7 @@ var EventPropagators = {
 
 module.exports = EventPropagators;
 }).call(this,require('_process'))
-},{"./EventConstants":154,"./EventPluginHub":155,"./accumulateInto":242,"./forEachAccumulated":250,"_process":47,"fbjs/lib/warning":295}],159:[function(require,module,exports){
+},{"./EventConstants":152,"./EventPluginHub":153,"./accumulateInto":240,"./forEachAccumulated":248,"_process":44,"fbjs/lib/warning":293}],157:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -59480,7 +59640,7 @@ assign(FallbackCompositionState.prototype, {
 PooledClass.addPoolingTo(FallbackCompositionState);
 
 module.exports = FallbackCompositionState;
-},{"./Object.assign":162,"./PooledClass":163,"./getTextContentAccessor":257}],160:[function(require,module,exports){
+},{"./Object.assign":160,"./PooledClass":161,"./getTextContentAccessor":255}],158:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -59711,7 +59871,7 @@ var HTMLDOMPropertyConfig = {
 };
 
 module.exports = HTMLDOMPropertyConfig;
-},{"./DOMProperty":149,"fbjs/lib/ExecutionEnvironment":270}],161:[function(require,module,exports){
+},{"./DOMProperty":147,"fbjs/lib/ExecutionEnvironment":268}],159:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -59848,7 +60008,7 @@ var LinkedValueUtils = {
 
 module.exports = LinkedValueUtils;
 }).call(this,require('_process'))
-},{"./ReactPropTypeLocations":213,"./ReactPropTypes":214,"_process":47,"fbjs/lib/invariant":284,"fbjs/lib/warning":295}],162:[function(require,module,exports){
+},{"./ReactPropTypeLocations":211,"./ReactPropTypes":212,"_process":44,"fbjs/lib/invariant":282,"fbjs/lib/warning":293}],160:[function(require,module,exports){
 /**
  * Copyright 2014-2015, Facebook, Inc.
  * All rights reserved.
@@ -59896,7 +60056,7 @@ function assign(target, sources) {
 }
 
 module.exports = assign;
-},{}],163:[function(require,module,exports){
+},{}],161:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -60018,7 +60178,7 @@ var PooledClass = {
 
 module.exports = PooledClass;
 }).call(this,require('_process'))
-},{"_process":47,"fbjs/lib/invariant":284}],164:[function(require,module,exports){
+},{"_process":44,"fbjs/lib/invariant":282}],162:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -60059,7 +60219,7 @@ React.__SECRET_DOM_DO_NOT_USE_OR_YOU_WILL_BE_FIRED = ReactDOM;
 React.__SECRET_DOM_SERVER_DO_NOT_USE_OR_YOU_WILL_BE_FIRED = ReactDOMServer;
 
 module.exports = React;
-},{"./Object.assign":162,"./ReactDOM":175,"./ReactDOMServer":185,"./ReactIsomorphic":203,"./deprecated":246}],165:[function(require,module,exports){
+},{"./Object.assign":160,"./ReactDOM":173,"./ReactDOMServer":183,"./ReactIsomorphic":201,"./deprecated":244}],163:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -60098,7 +60258,7 @@ var ReactBrowserComponentMixin = {
 
 module.exports = ReactBrowserComponentMixin;
 }).call(this,require('_process'))
-},{"./ReactInstanceMap":202,"./findDOMNode":248,"_process":47,"fbjs/lib/warning":295}],166:[function(require,module,exports){
+},{"./ReactInstanceMap":200,"./findDOMNode":246,"_process":44,"fbjs/lib/warning":293}],164:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -60423,7 +60583,7 @@ ReactPerf.measureMethods(ReactBrowserEventEmitter, 'ReactBrowserEventEmitter', {
 });
 
 module.exports = ReactBrowserEventEmitter;
-},{"./EventConstants":154,"./EventPluginHub":155,"./EventPluginRegistry":156,"./Object.assign":162,"./ReactEventEmitterMixin":197,"./ReactPerf":211,"./ViewportMetrics":241,"./isEventSupported":259}],167:[function(require,module,exports){
+},{"./EventConstants":152,"./EventPluginHub":153,"./EventPluginRegistry":154,"./Object.assign":160,"./ReactEventEmitterMixin":195,"./ReactPerf":209,"./ViewportMetrics":239,"./isEventSupported":257}],165:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014-2015, Facebook, Inc.
@@ -60548,7 +60708,7 @@ var ReactChildReconciler = {
 
 module.exports = ReactChildReconciler;
 }).call(this,require('_process'))
-},{"./ReactReconciler":216,"./instantiateReactComponent":258,"./shouldUpdateReactComponent":266,"./traverseAllChildren":267,"_process":47,"fbjs/lib/warning":295}],168:[function(require,module,exports){
+},{"./ReactReconciler":214,"./instantiateReactComponent":256,"./shouldUpdateReactComponent":264,"./traverseAllChildren":265,"_process":44,"fbjs/lib/warning":293}],166:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -60731,7 +60891,7 @@ var ReactChildren = {
 };
 
 module.exports = ReactChildren;
-},{"./PooledClass":163,"./ReactElement":192,"./traverseAllChildren":267,"fbjs/lib/emptyFunction":276}],169:[function(require,module,exports){
+},{"./PooledClass":161,"./ReactElement":190,"./traverseAllChildren":265,"fbjs/lib/emptyFunction":274}],167:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -61505,7 +61665,7 @@ var ReactClass = {
 
 module.exports = ReactClass;
 }).call(this,require('_process'))
-},{"./Object.assign":162,"./ReactComponent":170,"./ReactElement":192,"./ReactNoopUpdateQueue":209,"./ReactPropTypeLocationNames":212,"./ReactPropTypeLocations":213,"_process":47,"fbjs/lib/emptyObject":277,"fbjs/lib/invariant":284,"fbjs/lib/keyMirror":287,"fbjs/lib/keyOf":288,"fbjs/lib/warning":295}],170:[function(require,module,exports){
+},{"./Object.assign":160,"./ReactComponent":168,"./ReactElement":190,"./ReactNoopUpdateQueue":207,"./ReactPropTypeLocationNames":210,"./ReactPropTypeLocations":211,"_process":44,"fbjs/lib/emptyObject":275,"fbjs/lib/invariant":282,"fbjs/lib/keyMirror":285,"fbjs/lib/keyOf":286,"fbjs/lib/warning":293}],168:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -61630,7 +61790,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = ReactComponent;
 }).call(this,require('_process'))
-},{"./ReactNoopUpdateQueue":209,"./canDefineProperty":244,"_process":47,"fbjs/lib/emptyObject":277,"fbjs/lib/invariant":284,"fbjs/lib/warning":295}],171:[function(require,module,exports){
+},{"./ReactNoopUpdateQueue":207,"./canDefineProperty":242,"_process":44,"fbjs/lib/emptyObject":275,"fbjs/lib/invariant":282,"fbjs/lib/warning":293}],169:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -61672,7 +61832,7 @@ var ReactComponentBrowserEnvironment = {
 };
 
 module.exports = ReactComponentBrowserEnvironment;
-},{"./ReactDOMIDOperations":180,"./ReactMount":205}],172:[function(require,module,exports){
+},{"./ReactDOMIDOperations":178,"./ReactMount":203}],170:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014-2015, Facebook, Inc.
@@ -61726,7 +61886,7 @@ var ReactComponentEnvironment = {
 
 module.exports = ReactComponentEnvironment;
 }).call(this,require('_process'))
-},{"_process":47,"fbjs/lib/invariant":284}],173:[function(require,module,exports){
+},{"_process":44,"fbjs/lib/invariant":282}],171:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -62423,7 +62583,7 @@ var ReactCompositeComponent = {
 
 module.exports = ReactCompositeComponent;
 }).call(this,require('_process'))
-},{"./Object.assign":162,"./ReactComponentEnvironment":172,"./ReactCurrentOwner":174,"./ReactElement":192,"./ReactInstanceMap":202,"./ReactPerf":211,"./ReactPropTypeLocationNames":212,"./ReactPropTypeLocations":213,"./ReactReconciler":216,"./ReactUpdateQueue":222,"./shouldUpdateReactComponent":266,"_process":47,"fbjs/lib/emptyObject":277,"fbjs/lib/invariant":284,"fbjs/lib/warning":295}],174:[function(require,module,exports){
+},{"./Object.assign":160,"./ReactComponentEnvironment":170,"./ReactCurrentOwner":172,"./ReactElement":190,"./ReactInstanceMap":200,"./ReactPerf":209,"./ReactPropTypeLocationNames":210,"./ReactPropTypeLocations":211,"./ReactReconciler":214,"./ReactUpdateQueue":220,"./shouldUpdateReactComponent":264,"_process":44,"fbjs/lib/emptyObject":275,"fbjs/lib/invariant":282,"fbjs/lib/warning":293}],172:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -62454,7 +62614,7 @@ var ReactCurrentOwner = {
 };
 
 module.exports = ReactCurrentOwner;
-},{}],175:[function(require,module,exports){
+},{}],173:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -62549,7 +62709,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = React;
 }).call(this,require('_process'))
-},{"./ReactCurrentOwner":174,"./ReactDOMTextComponent":186,"./ReactDefaultInjection":189,"./ReactInstanceHandles":201,"./ReactMount":205,"./ReactPerf":211,"./ReactReconciler":216,"./ReactUpdates":223,"./ReactVersion":224,"./findDOMNode":248,"./renderSubtreeIntoContainer":263,"_process":47,"fbjs/lib/ExecutionEnvironment":270,"fbjs/lib/warning":295}],176:[function(require,module,exports){
+},{"./ReactCurrentOwner":172,"./ReactDOMTextComponent":184,"./ReactDefaultInjection":187,"./ReactInstanceHandles":199,"./ReactMount":203,"./ReactPerf":209,"./ReactReconciler":214,"./ReactUpdates":221,"./ReactVersion":222,"./findDOMNode":246,"./renderSubtreeIntoContainer":261,"_process":44,"fbjs/lib/ExecutionEnvironment":268,"fbjs/lib/warning":293}],174:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -62600,7 +62760,7 @@ var ReactDOMButton = {
 };
 
 module.exports = ReactDOMButton;
-},{}],177:[function(require,module,exports){
+},{}],175:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -63565,7 +63725,7 @@ assign(ReactDOMComponent.prototype, ReactDOMComponent.Mixin, ReactMultiChild.Mix
 
 module.exports = ReactDOMComponent;
 }).call(this,require('_process'))
-},{"./AutoFocusUtils":141,"./CSSPropertyOperations":144,"./DOMProperty":149,"./DOMPropertyOperations":150,"./EventConstants":154,"./Object.assign":162,"./ReactBrowserEventEmitter":166,"./ReactComponentBrowserEnvironment":171,"./ReactDOMButton":176,"./ReactDOMInput":181,"./ReactDOMOption":182,"./ReactDOMSelect":183,"./ReactDOMTextarea":187,"./ReactMount":205,"./ReactMultiChild":206,"./ReactPerf":211,"./ReactUpdateQueue":222,"./canDefineProperty":244,"./escapeTextContentForBrowser":247,"./isEventSupported":259,"./setInnerHTML":264,"./setTextContent":265,"./validateDOMNesting":268,"_process":47,"fbjs/lib/invariant":284,"fbjs/lib/keyOf":288,"fbjs/lib/shallowEqual":293,"fbjs/lib/warning":295}],178:[function(require,module,exports){
+},{"./AutoFocusUtils":139,"./CSSPropertyOperations":142,"./DOMProperty":147,"./DOMPropertyOperations":148,"./EventConstants":152,"./Object.assign":160,"./ReactBrowserEventEmitter":164,"./ReactComponentBrowserEnvironment":169,"./ReactDOMButton":174,"./ReactDOMInput":179,"./ReactDOMOption":180,"./ReactDOMSelect":181,"./ReactDOMTextarea":185,"./ReactMount":203,"./ReactMultiChild":204,"./ReactPerf":209,"./ReactUpdateQueue":220,"./canDefineProperty":242,"./escapeTextContentForBrowser":245,"./isEventSupported":257,"./setInnerHTML":262,"./setTextContent":263,"./validateDOMNesting":266,"_process":44,"fbjs/lib/invariant":282,"fbjs/lib/keyOf":286,"fbjs/lib/shallowEqual":291,"fbjs/lib/warning":293}],176:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -63745,7 +63905,7 @@ var ReactDOMFactories = mapObject({
 
 module.exports = ReactDOMFactories;
 }).call(this,require('_process'))
-},{"./ReactElement":192,"./ReactElementValidator":193,"_process":47,"fbjs/lib/mapObject":289}],179:[function(require,module,exports){
+},{"./ReactElement":190,"./ReactElementValidator":191,"_process":44,"fbjs/lib/mapObject":287}],177:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -63764,7 +63924,7 @@ var ReactDOMFeatureFlags = {
 };
 
 module.exports = ReactDOMFeatureFlags;
-},{}],180:[function(require,module,exports){
+},{}],178:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -63861,7 +64021,7 @@ ReactPerf.measureMethods(ReactDOMIDOperations, 'ReactDOMIDOperations', {
 
 module.exports = ReactDOMIDOperations;
 }).call(this,require('_process'))
-},{"./DOMChildrenOperations":148,"./DOMPropertyOperations":150,"./ReactMount":205,"./ReactPerf":211,"_process":47,"fbjs/lib/invariant":284}],181:[function(require,module,exports){
+},{"./DOMChildrenOperations":146,"./DOMPropertyOperations":148,"./ReactMount":203,"./ReactPerf":209,"_process":44,"fbjs/lib/invariant":282}],179:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -64017,7 +64177,7 @@ function _handleChange(event) {
 
 module.exports = ReactDOMInput;
 }).call(this,require('_process'))
-},{"./LinkedValueUtils":161,"./Object.assign":162,"./ReactDOMIDOperations":180,"./ReactMount":205,"./ReactUpdates":223,"_process":47,"fbjs/lib/invariant":284}],182:[function(require,module,exports){
+},{"./LinkedValueUtils":159,"./Object.assign":160,"./ReactDOMIDOperations":178,"./ReactMount":203,"./ReactUpdates":221,"_process":44,"fbjs/lib/invariant":282}],180:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -64109,7 +64269,7 @@ var ReactDOMOption = {
 
 module.exports = ReactDOMOption;
 }).call(this,require('_process'))
-},{"./Object.assign":162,"./ReactChildren":168,"./ReactDOMSelect":183,"_process":47,"fbjs/lib/warning":295}],183:[function(require,module,exports){
+},{"./Object.assign":160,"./ReactChildren":166,"./ReactDOMSelect":181,"_process":44,"fbjs/lib/warning":293}],181:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -64300,7 +64460,7 @@ function _handleChange(event) {
 
 module.exports = ReactDOMSelect;
 }).call(this,require('_process'))
-},{"./LinkedValueUtils":161,"./Object.assign":162,"./ReactMount":205,"./ReactUpdates":223,"_process":47,"fbjs/lib/warning":295}],184:[function(require,module,exports){
+},{"./LinkedValueUtils":159,"./Object.assign":160,"./ReactMount":203,"./ReactUpdates":221,"_process":44,"fbjs/lib/warning":293}],182:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -64513,7 +64673,7 @@ var ReactDOMSelection = {
 };
 
 module.exports = ReactDOMSelection;
-},{"./getNodeForCharacterOffset":256,"./getTextContentAccessor":257,"fbjs/lib/ExecutionEnvironment":270}],185:[function(require,module,exports){
+},{"./getNodeForCharacterOffset":254,"./getTextContentAccessor":255,"fbjs/lib/ExecutionEnvironment":268}],183:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -64540,7 +64700,7 @@ var ReactDOMServer = {
 };
 
 module.exports = ReactDOMServer;
-},{"./ReactDefaultInjection":189,"./ReactServerRendering":220,"./ReactVersion":224}],186:[function(require,module,exports){
+},{"./ReactDefaultInjection":187,"./ReactServerRendering":218,"./ReactVersion":222}],184:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -64670,7 +64830,7 @@ assign(ReactDOMTextComponent.prototype, {
 
 module.exports = ReactDOMTextComponent;
 }).call(this,require('_process'))
-},{"./DOMChildrenOperations":148,"./DOMPropertyOperations":150,"./Object.assign":162,"./ReactComponentBrowserEnvironment":171,"./ReactMount":205,"./escapeTextContentForBrowser":247,"./setTextContent":265,"./validateDOMNesting":268,"_process":47}],187:[function(require,module,exports){
+},{"./DOMChildrenOperations":146,"./DOMPropertyOperations":148,"./Object.assign":160,"./ReactComponentBrowserEnvironment":169,"./ReactMount":203,"./escapeTextContentForBrowser":245,"./setTextContent":263,"./validateDOMNesting":266,"_process":44}],185:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -64786,7 +64946,7 @@ function _handleChange(event) {
 
 module.exports = ReactDOMTextarea;
 }).call(this,require('_process'))
-},{"./LinkedValueUtils":161,"./Object.assign":162,"./ReactDOMIDOperations":180,"./ReactUpdates":223,"_process":47,"fbjs/lib/invariant":284,"fbjs/lib/warning":295}],188:[function(require,module,exports){
+},{"./LinkedValueUtils":159,"./Object.assign":160,"./ReactDOMIDOperations":178,"./ReactUpdates":221,"_process":44,"fbjs/lib/invariant":282,"fbjs/lib/warning":293}],186:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -64854,7 +65014,7 @@ var ReactDefaultBatchingStrategy = {
 };
 
 module.exports = ReactDefaultBatchingStrategy;
-},{"./Object.assign":162,"./ReactUpdates":223,"./Transaction":240,"fbjs/lib/emptyFunction":276}],189:[function(require,module,exports){
+},{"./Object.assign":160,"./ReactUpdates":221,"./Transaction":238,"fbjs/lib/emptyFunction":274}],187:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -64954,7 +65114,7 @@ module.exports = {
   inject: inject
 };
 }).call(this,require('_process'))
-},{"./BeforeInputEventPlugin":142,"./ChangeEventPlugin":146,"./ClientReactRootIndex":147,"./DefaultEventPluginOrder":152,"./EnterLeaveEventPlugin":153,"./HTMLDOMPropertyConfig":160,"./ReactBrowserComponentMixin":165,"./ReactComponentBrowserEnvironment":171,"./ReactDOMComponent":177,"./ReactDOMTextComponent":186,"./ReactDefaultBatchingStrategy":188,"./ReactDefaultPerf":190,"./ReactEventListener":198,"./ReactInjection":199,"./ReactInstanceHandles":201,"./ReactMount":205,"./ReactReconcileTransaction":215,"./SVGDOMPropertyConfig":225,"./SelectEventPlugin":226,"./ServerReactRootIndex":227,"./SimpleEventPlugin":228,"_process":47,"fbjs/lib/ExecutionEnvironment":270}],190:[function(require,module,exports){
+},{"./BeforeInputEventPlugin":140,"./ChangeEventPlugin":144,"./ClientReactRootIndex":145,"./DefaultEventPluginOrder":150,"./EnterLeaveEventPlugin":151,"./HTMLDOMPropertyConfig":158,"./ReactBrowserComponentMixin":163,"./ReactComponentBrowserEnvironment":169,"./ReactDOMComponent":175,"./ReactDOMTextComponent":184,"./ReactDefaultBatchingStrategy":186,"./ReactDefaultPerf":188,"./ReactEventListener":196,"./ReactInjection":197,"./ReactInstanceHandles":199,"./ReactMount":203,"./ReactReconcileTransaction":213,"./SVGDOMPropertyConfig":223,"./SelectEventPlugin":224,"./ServerReactRootIndex":225,"./SimpleEventPlugin":226,"_process":44,"fbjs/lib/ExecutionEnvironment":268}],188:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -65192,7 +65352,7 @@ var ReactDefaultPerf = {
 };
 
 module.exports = ReactDefaultPerf;
-},{"./DOMProperty":149,"./ReactDefaultPerfAnalysis":191,"./ReactMount":205,"./ReactPerf":211,"fbjs/lib/performanceNow":292}],191:[function(require,module,exports){
+},{"./DOMProperty":147,"./ReactDefaultPerfAnalysis":189,"./ReactMount":203,"./ReactPerf":209,"fbjs/lib/performanceNow":290}],189:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -65394,7 +65554,7 @@ var ReactDefaultPerfAnalysis = {
 };
 
 module.exports = ReactDefaultPerfAnalysis;
-},{"./Object.assign":162}],192:[function(require,module,exports){
+},{"./Object.assign":160}],190:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014-2015, Facebook, Inc.
@@ -65644,7 +65804,7 @@ ReactElement.isValidElement = function (object) {
 
 module.exports = ReactElement;
 }).call(this,require('_process'))
-},{"./Object.assign":162,"./ReactCurrentOwner":174,"./canDefineProperty":244,"_process":47}],193:[function(require,module,exports){
+},{"./Object.assign":160,"./ReactCurrentOwner":172,"./canDefineProperty":242,"_process":44}],191:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014-2015, Facebook, Inc.
@@ -65928,7 +66088,7 @@ var ReactElementValidator = {
 
 module.exports = ReactElementValidator;
 }).call(this,require('_process'))
-},{"./ReactCurrentOwner":174,"./ReactElement":192,"./ReactPropTypeLocationNames":212,"./ReactPropTypeLocations":213,"./canDefineProperty":244,"./getIteratorFn":255,"_process":47,"fbjs/lib/invariant":284,"fbjs/lib/warning":295}],194:[function(require,module,exports){
+},{"./ReactCurrentOwner":172,"./ReactElement":190,"./ReactPropTypeLocationNames":210,"./ReactPropTypeLocations":211,"./canDefineProperty":242,"./getIteratorFn":253,"_process":44,"fbjs/lib/invariant":282,"fbjs/lib/warning":293}],192:[function(require,module,exports){
 /**
  * Copyright 2014-2015, Facebook, Inc.
  * All rights reserved.
@@ -65980,7 +66140,7 @@ assign(ReactEmptyComponent.prototype, {
 ReactEmptyComponent.injection = ReactEmptyComponentInjection;
 
 module.exports = ReactEmptyComponent;
-},{"./Object.assign":162,"./ReactElement":192,"./ReactEmptyComponentRegistry":195,"./ReactReconciler":216}],195:[function(require,module,exports){
+},{"./Object.assign":160,"./ReactElement":190,"./ReactEmptyComponentRegistry":193,"./ReactReconciler":214}],193:[function(require,module,exports){
 /**
  * Copyright 2014-2015, Facebook, Inc.
  * All rights reserved.
@@ -66029,7 +66189,7 @@ var ReactEmptyComponentRegistry = {
 };
 
 module.exports = ReactEmptyComponentRegistry;
-},{}],196:[function(require,module,exports){
+},{}],194:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -66109,7 +66269,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = ReactErrorUtils;
 }).call(this,require('_process'))
-},{"_process":47}],197:[function(require,module,exports){
+},{"_process":44}],195:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -66148,7 +66308,7 @@ var ReactEventEmitterMixin = {
 };
 
 module.exports = ReactEventEmitterMixin;
-},{"./EventPluginHub":155}],198:[function(require,module,exports){
+},{"./EventPluginHub":153}],196:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -66360,7 +66520,7 @@ var ReactEventListener = {
 };
 
 module.exports = ReactEventListener;
-},{"./Object.assign":162,"./PooledClass":163,"./ReactInstanceHandles":201,"./ReactMount":205,"./ReactUpdates":223,"./getEventTarget":254,"fbjs/lib/EventListener":269,"fbjs/lib/ExecutionEnvironment":270,"fbjs/lib/getUnboundedScrollPosition":281}],199:[function(require,module,exports){
+},{"./Object.assign":160,"./PooledClass":161,"./ReactInstanceHandles":199,"./ReactMount":203,"./ReactUpdates":221,"./getEventTarget":252,"fbjs/lib/EventListener":267,"fbjs/lib/ExecutionEnvironment":268,"fbjs/lib/getUnboundedScrollPosition":279}],197:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -66399,7 +66559,7 @@ var ReactInjection = {
 };
 
 module.exports = ReactInjection;
-},{"./DOMProperty":149,"./EventPluginHub":155,"./ReactBrowserEventEmitter":166,"./ReactClass":169,"./ReactComponentEnvironment":172,"./ReactEmptyComponent":194,"./ReactNativeComponent":208,"./ReactPerf":211,"./ReactRootIndex":218,"./ReactUpdates":223}],200:[function(require,module,exports){
+},{"./DOMProperty":147,"./EventPluginHub":153,"./ReactBrowserEventEmitter":164,"./ReactClass":167,"./ReactComponentEnvironment":170,"./ReactEmptyComponent":192,"./ReactNativeComponent":206,"./ReactPerf":209,"./ReactRootIndex":216,"./ReactUpdates":221}],198:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -66524,7 +66684,7 @@ var ReactInputSelection = {
 };
 
 module.exports = ReactInputSelection;
-},{"./ReactDOMSelection":184,"fbjs/lib/containsNode":273,"fbjs/lib/focusNode":278,"fbjs/lib/getActiveElement":279}],201:[function(require,module,exports){
+},{"./ReactDOMSelection":182,"fbjs/lib/containsNode":271,"fbjs/lib/focusNode":276,"fbjs/lib/getActiveElement":277}],199:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -66829,7 +66989,7 @@ var ReactInstanceHandles = {
 
 module.exports = ReactInstanceHandles;
 }).call(this,require('_process'))
-},{"./ReactRootIndex":218,"_process":47,"fbjs/lib/invariant":284}],202:[function(require,module,exports){
+},{"./ReactRootIndex":216,"_process":44,"fbjs/lib/invariant":282}],200:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -66877,7 +67037,7 @@ var ReactInstanceMap = {
 };
 
 module.exports = ReactInstanceMap;
-},{}],203:[function(require,module,exports){
+},{}],201:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -66954,7 +67114,7 @@ var React = {
 
 module.exports = React;
 }).call(this,require('_process'))
-},{"./Object.assign":162,"./ReactChildren":168,"./ReactClass":169,"./ReactComponent":170,"./ReactDOMFactories":178,"./ReactElement":192,"./ReactElementValidator":193,"./ReactPropTypes":214,"./ReactVersion":224,"./onlyChild":261,"_process":47}],204:[function(require,module,exports){
+},{"./Object.assign":160,"./ReactChildren":166,"./ReactClass":167,"./ReactComponent":168,"./ReactDOMFactories":176,"./ReactElement":190,"./ReactElementValidator":191,"./ReactPropTypes":212,"./ReactVersion":222,"./onlyChild":259,"_process":44}],202:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -67000,7 +67160,7 @@ var ReactMarkupChecksum = {
 };
 
 module.exports = ReactMarkupChecksum;
-},{"./adler32":243}],205:[function(require,module,exports){
+},{"./adler32":241}],203:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -67853,7 +68013,7 @@ ReactPerf.measureMethods(ReactMount, 'ReactMount', {
 
 module.exports = ReactMount;
 }).call(this,require('_process'))
-},{"./DOMProperty":149,"./Object.assign":162,"./ReactBrowserEventEmitter":166,"./ReactCurrentOwner":174,"./ReactDOMFeatureFlags":179,"./ReactElement":192,"./ReactEmptyComponentRegistry":195,"./ReactInstanceHandles":201,"./ReactInstanceMap":202,"./ReactMarkupChecksum":204,"./ReactPerf":211,"./ReactReconciler":216,"./ReactUpdateQueue":222,"./ReactUpdates":223,"./instantiateReactComponent":258,"./setInnerHTML":264,"./shouldUpdateReactComponent":266,"./validateDOMNesting":268,"_process":47,"fbjs/lib/containsNode":273,"fbjs/lib/emptyObject":277,"fbjs/lib/invariant":284,"fbjs/lib/warning":295}],206:[function(require,module,exports){
+},{"./DOMProperty":147,"./Object.assign":160,"./ReactBrowserEventEmitter":164,"./ReactCurrentOwner":172,"./ReactDOMFeatureFlags":177,"./ReactElement":190,"./ReactEmptyComponentRegistry":193,"./ReactInstanceHandles":199,"./ReactInstanceMap":200,"./ReactMarkupChecksum":202,"./ReactPerf":209,"./ReactReconciler":214,"./ReactUpdateQueue":220,"./ReactUpdates":221,"./instantiateReactComponent":256,"./setInnerHTML":262,"./shouldUpdateReactComponent":264,"./validateDOMNesting":266,"_process":44,"fbjs/lib/containsNode":271,"fbjs/lib/emptyObject":275,"fbjs/lib/invariant":282,"fbjs/lib/warning":293}],204:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -68352,7 +68512,7 @@ var ReactMultiChild = {
 
 module.exports = ReactMultiChild;
 }).call(this,require('_process'))
-},{"./ReactChildReconciler":167,"./ReactComponentEnvironment":172,"./ReactCurrentOwner":174,"./ReactMultiChildUpdateTypes":207,"./ReactReconciler":216,"./flattenChildren":249,"_process":47}],207:[function(require,module,exports){
+},{"./ReactChildReconciler":165,"./ReactComponentEnvironment":170,"./ReactCurrentOwner":172,"./ReactMultiChildUpdateTypes":205,"./ReactReconciler":214,"./flattenChildren":247,"_process":44}],205:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -68385,7 +68545,7 @@ var ReactMultiChildUpdateTypes = keyMirror({
 });
 
 module.exports = ReactMultiChildUpdateTypes;
-},{"fbjs/lib/keyMirror":287}],208:[function(require,module,exports){
+},{"fbjs/lib/keyMirror":285}],206:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014-2015, Facebook, Inc.
@@ -68482,7 +68642,7 @@ var ReactNativeComponent = {
 
 module.exports = ReactNativeComponent;
 }).call(this,require('_process'))
-},{"./Object.assign":162,"_process":47,"fbjs/lib/invariant":284}],209:[function(require,module,exports){
+},{"./Object.assign":160,"_process":44,"fbjs/lib/invariant":282}],207:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2015, Facebook, Inc.
@@ -68603,7 +68763,7 @@ var ReactNoopUpdateQueue = {
 
 module.exports = ReactNoopUpdateQueue;
 }).call(this,require('_process'))
-},{"_process":47,"fbjs/lib/warning":295}],210:[function(require,module,exports){
+},{"_process":44,"fbjs/lib/warning":293}],208:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -68697,7 +68857,7 @@ var ReactOwner = {
 
 module.exports = ReactOwner;
 }).call(this,require('_process'))
-},{"_process":47,"fbjs/lib/invariant":284}],211:[function(require,module,exports){
+},{"_process":44,"fbjs/lib/invariant":282}],209:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -68796,7 +68956,7 @@ function _noMeasure(objName, fnName, func) {
 
 module.exports = ReactPerf;
 }).call(this,require('_process'))
-},{"_process":47}],212:[function(require,module,exports){
+},{"_process":44}],210:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -68823,7 +68983,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = ReactPropTypeLocationNames;
 }).call(this,require('_process'))
-},{"_process":47}],213:[function(require,module,exports){
+},{"_process":44}],211:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -68846,7 +69006,7 @@ var ReactPropTypeLocations = keyMirror({
 });
 
 module.exports = ReactPropTypeLocations;
-},{"fbjs/lib/keyMirror":287}],214:[function(require,module,exports){
+},{"fbjs/lib/keyMirror":285}],212:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -69203,7 +69363,7 @@ function getClassName(propValue) {
 }
 
 module.exports = ReactPropTypes;
-},{"./ReactElement":192,"./ReactPropTypeLocationNames":212,"./getIteratorFn":255,"fbjs/lib/emptyFunction":276}],215:[function(require,module,exports){
+},{"./ReactElement":190,"./ReactPropTypeLocationNames":210,"./getIteratorFn":253,"fbjs/lib/emptyFunction":274}],213:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -69355,7 +69515,7 @@ assign(ReactReconcileTransaction.prototype, Transaction.Mixin, Mixin);
 PooledClass.addPoolingTo(ReactReconcileTransaction);
 
 module.exports = ReactReconcileTransaction;
-},{"./CallbackQueue":145,"./Object.assign":162,"./PooledClass":163,"./ReactBrowserEventEmitter":166,"./ReactDOMFeatureFlags":179,"./ReactInputSelection":200,"./Transaction":240}],216:[function(require,module,exports){
+},{"./CallbackQueue":143,"./Object.assign":160,"./PooledClass":161,"./ReactBrowserEventEmitter":164,"./ReactDOMFeatureFlags":177,"./ReactInputSelection":198,"./Transaction":238}],214:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -69463,7 +69623,7 @@ var ReactReconciler = {
 };
 
 module.exports = ReactReconciler;
-},{"./ReactRef":217}],217:[function(require,module,exports){
+},{"./ReactRef":215}],215:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -69542,7 +69702,7 @@ ReactRef.detachRefs = function (instance, element) {
 };
 
 module.exports = ReactRef;
-},{"./ReactOwner":210}],218:[function(require,module,exports){
+},{"./ReactOwner":208}],216:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -69572,7 +69732,7 @@ var ReactRootIndex = {
 };
 
 module.exports = ReactRootIndex;
-},{}],219:[function(require,module,exports){
+},{}],217:[function(require,module,exports){
 /**
  * Copyright 2014-2015, Facebook, Inc.
  * All rights reserved.
@@ -69596,7 +69756,7 @@ var ReactServerBatchingStrategy = {
 };
 
 module.exports = ReactServerBatchingStrategy;
-},{}],220:[function(require,module,exports){
+},{}],218:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -69682,7 +69842,7 @@ module.exports = {
   renderToStaticMarkup: renderToStaticMarkup
 };
 }).call(this,require('_process'))
-},{"./ReactDefaultBatchingStrategy":188,"./ReactElement":192,"./ReactInstanceHandles":201,"./ReactMarkupChecksum":204,"./ReactServerBatchingStrategy":219,"./ReactServerRenderingTransaction":221,"./ReactUpdates":223,"./instantiateReactComponent":258,"_process":47,"fbjs/lib/emptyObject":277,"fbjs/lib/invariant":284}],221:[function(require,module,exports){
+},{"./ReactDefaultBatchingStrategy":186,"./ReactElement":190,"./ReactInstanceHandles":199,"./ReactMarkupChecksum":202,"./ReactServerBatchingStrategy":217,"./ReactServerRenderingTransaction":219,"./ReactUpdates":221,"./instantiateReactComponent":256,"_process":44,"fbjs/lib/emptyObject":275,"fbjs/lib/invariant":282}],219:[function(require,module,exports){
 /**
  * Copyright 2014-2015, Facebook, Inc.
  * All rights reserved.
@@ -69770,7 +69930,7 @@ assign(ReactServerRenderingTransaction.prototype, Transaction.Mixin, Mixin);
 PooledClass.addPoolingTo(ReactServerRenderingTransaction);
 
 module.exports = ReactServerRenderingTransaction;
-},{"./CallbackQueue":145,"./Object.assign":162,"./PooledClass":163,"./Transaction":240,"fbjs/lib/emptyFunction":276}],222:[function(require,module,exports){
+},{"./CallbackQueue":143,"./Object.assign":160,"./PooledClass":161,"./Transaction":238,"fbjs/lib/emptyFunction":274}],220:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2015, Facebook, Inc.
@@ -70030,7 +70190,7 @@ var ReactUpdateQueue = {
 
 module.exports = ReactUpdateQueue;
 }).call(this,require('_process'))
-},{"./Object.assign":162,"./ReactCurrentOwner":174,"./ReactElement":192,"./ReactInstanceMap":202,"./ReactUpdates":223,"_process":47,"fbjs/lib/invariant":284,"fbjs/lib/warning":295}],223:[function(require,module,exports){
+},{"./Object.assign":160,"./ReactCurrentOwner":172,"./ReactElement":190,"./ReactInstanceMap":200,"./ReactUpdates":221,"_process":44,"fbjs/lib/invariant":282,"fbjs/lib/warning":293}],221:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -70256,7 +70416,7 @@ var ReactUpdates = {
 
 module.exports = ReactUpdates;
 }).call(this,require('_process'))
-},{"./CallbackQueue":145,"./Object.assign":162,"./PooledClass":163,"./ReactPerf":211,"./ReactReconciler":216,"./Transaction":240,"_process":47,"fbjs/lib/invariant":284}],224:[function(require,module,exports){
+},{"./CallbackQueue":143,"./Object.assign":160,"./PooledClass":161,"./ReactPerf":209,"./ReactReconciler":214,"./Transaction":238,"_process":44,"fbjs/lib/invariant":282}],222:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -70271,7 +70431,7 @@ module.exports = ReactUpdates;
 'use strict';
 
 module.exports = '0.14.7';
-},{}],225:[function(require,module,exports){
+},{}],223:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -70399,7 +70559,7 @@ var SVGDOMPropertyConfig = {
 };
 
 module.exports = SVGDOMPropertyConfig;
-},{"./DOMProperty":149}],226:[function(require,module,exports){
+},{"./DOMProperty":147}],224:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -70601,7 +70761,7 @@ var SelectEventPlugin = {
 };
 
 module.exports = SelectEventPlugin;
-},{"./EventConstants":154,"./EventPropagators":158,"./ReactInputSelection":200,"./SyntheticEvent":232,"./isTextInputElement":260,"fbjs/lib/ExecutionEnvironment":270,"fbjs/lib/getActiveElement":279,"fbjs/lib/keyOf":288,"fbjs/lib/shallowEqual":293}],227:[function(require,module,exports){
+},{"./EventConstants":152,"./EventPropagators":156,"./ReactInputSelection":198,"./SyntheticEvent":230,"./isTextInputElement":258,"fbjs/lib/ExecutionEnvironment":268,"fbjs/lib/getActiveElement":277,"fbjs/lib/keyOf":286,"fbjs/lib/shallowEqual":291}],225:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -70631,7 +70791,7 @@ var ServerReactRootIndex = {
 };
 
 module.exports = ServerReactRootIndex;
-},{}],228:[function(require,module,exports){
+},{}],226:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -71221,7 +71381,7 @@ var SimpleEventPlugin = {
 
 module.exports = SimpleEventPlugin;
 }).call(this,require('_process'))
-},{"./EventConstants":154,"./EventPropagators":158,"./ReactMount":205,"./SyntheticClipboardEvent":229,"./SyntheticDragEvent":231,"./SyntheticEvent":232,"./SyntheticFocusEvent":233,"./SyntheticKeyboardEvent":235,"./SyntheticMouseEvent":236,"./SyntheticTouchEvent":237,"./SyntheticUIEvent":238,"./SyntheticWheelEvent":239,"./getEventCharCode":251,"_process":47,"fbjs/lib/EventListener":269,"fbjs/lib/emptyFunction":276,"fbjs/lib/invariant":284,"fbjs/lib/keyOf":288}],229:[function(require,module,exports){
+},{"./EventConstants":152,"./EventPropagators":156,"./ReactMount":203,"./SyntheticClipboardEvent":227,"./SyntheticDragEvent":229,"./SyntheticEvent":230,"./SyntheticFocusEvent":231,"./SyntheticKeyboardEvent":233,"./SyntheticMouseEvent":234,"./SyntheticTouchEvent":235,"./SyntheticUIEvent":236,"./SyntheticWheelEvent":237,"./getEventCharCode":249,"_process":44,"fbjs/lib/EventListener":267,"fbjs/lib/emptyFunction":274,"fbjs/lib/invariant":282,"fbjs/lib/keyOf":286}],227:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -71261,7 +71421,7 @@ function SyntheticClipboardEvent(dispatchConfig, dispatchMarker, nativeEvent, na
 SyntheticEvent.augmentClass(SyntheticClipboardEvent, ClipboardEventInterface);
 
 module.exports = SyntheticClipboardEvent;
-},{"./SyntheticEvent":232}],230:[function(require,module,exports){
+},{"./SyntheticEvent":230}],228:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -71299,7 +71459,7 @@ function SyntheticCompositionEvent(dispatchConfig, dispatchMarker, nativeEvent, 
 SyntheticEvent.augmentClass(SyntheticCompositionEvent, CompositionEventInterface);
 
 module.exports = SyntheticCompositionEvent;
-},{"./SyntheticEvent":232}],231:[function(require,module,exports){
+},{"./SyntheticEvent":230}],229:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -71337,7 +71497,7 @@ function SyntheticDragEvent(dispatchConfig, dispatchMarker, nativeEvent, nativeE
 SyntheticMouseEvent.augmentClass(SyntheticDragEvent, DragEventInterface);
 
 module.exports = SyntheticDragEvent;
-},{"./SyntheticMouseEvent":236}],232:[function(require,module,exports){
+},{"./SyntheticMouseEvent":234}],230:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -71520,7 +71680,7 @@ PooledClass.addPoolingTo(SyntheticEvent, PooledClass.fourArgumentPooler);
 
 module.exports = SyntheticEvent;
 }).call(this,require('_process'))
-},{"./Object.assign":162,"./PooledClass":163,"_process":47,"fbjs/lib/emptyFunction":276,"fbjs/lib/warning":295}],233:[function(require,module,exports){
+},{"./Object.assign":160,"./PooledClass":161,"_process":44,"fbjs/lib/emptyFunction":274,"fbjs/lib/warning":293}],231:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -71558,7 +71718,7 @@ function SyntheticFocusEvent(dispatchConfig, dispatchMarker, nativeEvent, native
 SyntheticUIEvent.augmentClass(SyntheticFocusEvent, FocusEventInterface);
 
 module.exports = SyntheticFocusEvent;
-},{"./SyntheticUIEvent":238}],234:[function(require,module,exports){
+},{"./SyntheticUIEvent":236}],232:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -71597,7 +71757,7 @@ function SyntheticInputEvent(dispatchConfig, dispatchMarker, nativeEvent, native
 SyntheticEvent.augmentClass(SyntheticInputEvent, InputEventInterface);
 
 module.exports = SyntheticInputEvent;
-},{"./SyntheticEvent":232}],235:[function(require,module,exports){
+},{"./SyntheticEvent":230}],233:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -71683,7 +71843,7 @@ function SyntheticKeyboardEvent(dispatchConfig, dispatchMarker, nativeEvent, nat
 SyntheticUIEvent.augmentClass(SyntheticKeyboardEvent, KeyboardEventInterface);
 
 module.exports = SyntheticKeyboardEvent;
-},{"./SyntheticUIEvent":238,"./getEventCharCode":251,"./getEventKey":252,"./getEventModifierState":253}],236:[function(require,module,exports){
+},{"./SyntheticUIEvent":236,"./getEventCharCode":249,"./getEventKey":250,"./getEventModifierState":251}],234:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -71757,7 +71917,7 @@ function SyntheticMouseEvent(dispatchConfig, dispatchMarker, nativeEvent, native
 SyntheticUIEvent.augmentClass(SyntheticMouseEvent, MouseEventInterface);
 
 module.exports = SyntheticMouseEvent;
-},{"./SyntheticUIEvent":238,"./ViewportMetrics":241,"./getEventModifierState":253}],237:[function(require,module,exports){
+},{"./SyntheticUIEvent":236,"./ViewportMetrics":239,"./getEventModifierState":251}],235:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -71804,7 +71964,7 @@ function SyntheticTouchEvent(dispatchConfig, dispatchMarker, nativeEvent, native
 SyntheticUIEvent.augmentClass(SyntheticTouchEvent, TouchEventInterface);
 
 module.exports = SyntheticTouchEvent;
-},{"./SyntheticUIEvent":238,"./getEventModifierState":253}],238:[function(require,module,exports){
+},{"./SyntheticUIEvent":236,"./getEventModifierState":251}],236:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -71865,7 +72025,7 @@ function SyntheticUIEvent(dispatchConfig, dispatchMarker, nativeEvent, nativeEve
 SyntheticEvent.augmentClass(SyntheticUIEvent, UIEventInterface);
 
 module.exports = SyntheticUIEvent;
-},{"./SyntheticEvent":232,"./getEventTarget":254}],239:[function(require,module,exports){
+},{"./SyntheticEvent":230,"./getEventTarget":252}],237:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -71921,7 +72081,7 @@ function SyntheticWheelEvent(dispatchConfig, dispatchMarker, nativeEvent, native
 SyntheticMouseEvent.augmentClass(SyntheticWheelEvent, WheelEventInterface);
 
 module.exports = SyntheticWheelEvent;
-},{"./SyntheticMouseEvent":236}],240:[function(require,module,exports){
+},{"./SyntheticMouseEvent":234}],238:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -72155,7 +72315,7 @@ var Transaction = {
 
 module.exports = Transaction;
 }).call(this,require('_process'))
-},{"_process":47,"fbjs/lib/invariant":284}],241:[function(require,module,exports){
+},{"_process":44,"fbjs/lib/invariant":282}],239:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -72183,7 +72343,7 @@ var ViewportMetrics = {
 };
 
 module.exports = ViewportMetrics;
-},{}],242:[function(require,module,exports){
+},{}],240:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014-2015, Facebook, Inc.
@@ -72245,7 +72405,7 @@ function accumulateInto(current, next) {
 
 module.exports = accumulateInto;
 }).call(this,require('_process'))
-},{"_process":47,"fbjs/lib/invariant":284}],243:[function(require,module,exports){
+},{"_process":44,"fbjs/lib/invariant":282}],241:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -72288,7 +72448,7 @@ function adler32(data) {
 }
 
 module.exports = adler32;
-},{}],244:[function(require,module,exports){
+},{}],242:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -72315,7 +72475,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = canDefineProperty;
 }).call(this,require('_process'))
-},{"_process":47}],245:[function(require,module,exports){
+},{"_process":44}],243:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -72371,7 +72531,7 @@ function dangerousStyleValue(name, value) {
 }
 
 module.exports = dangerousStyleValue;
-},{"./CSSProperty":143}],246:[function(require,module,exports){
+},{"./CSSProperty":141}],244:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -72422,7 +72582,7 @@ function deprecated(fnName, newModule, newPackage, ctx, fn) {
 
 module.exports = deprecated;
 }).call(this,require('_process'))
-},{"./Object.assign":162,"_process":47,"fbjs/lib/warning":295}],247:[function(require,module,exports){
+},{"./Object.assign":160,"_process":44,"fbjs/lib/warning":293}],245:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -72461,7 +72621,7 @@ function escapeTextContentForBrowser(text) {
 }
 
 module.exports = escapeTextContentForBrowser;
-},{}],248:[function(require,module,exports){
+},{}],246:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -72513,7 +72673,7 @@ function findDOMNode(componentOrElement) {
 
 module.exports = findDOMNode;
 }).call(this,require('_process'))
-},{"./ReactCurrentOwner":174,"./ReactInstanceMap":202,"./ReactMount":205,"_process":47,"fbjs/lib/invariant":284,"fbjs/lib/warning":295}],249:[function(require,module,exports){
+},{"./ReactCurrentOwner":172,"./ReactInstanceMap":200,"./ReactMount":203,"_process":44,"fbjs/lib/invariant":282,"fbjs/lib/warning":293}],247:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -72564,7 +72724,7 @@ function flattenChildren(children) {
 
 module.exports = flattenChildren;
 }).call(this,require('_process'))
-},{"./traverseAllChildren":267,"_process":47,"fbjs/lib/warning":295}],250:[function(require,module,exports){
+},{"./traverseAllChildren":265,"_process":44,"fbjs/lib/warning":293}],248:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -72594,7 +72754,7 @@ var forEachAccumulated = function (arr, cb, scope) {
 };
 
 module.exports = forEachAccumulated;
-},{}],251:[function(require,module,exports){
+},{}],249:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -72645,7 +72805,7 @@ function getEventCharCode(nativeEvent) {
 }
 
 module.exports = getEventCharCode;
-},{}],252:[function(require,module,exports){
+},{}],250:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -72749,7 +72909,7 @@ function getEventKey(nativeEvent) {
 }
 
 module.exports = getEventKey;
-},{"./getEventCharCode":251}],253:[function(require,module,exports){
+},{"./getEventCharCode":249}],251:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -72794,7 +72954,7 @@ function getEventModifierState(nativeEvent) {
 }
 
 module.exports = getEventModifierState;
-},{}],254:[function(require,module,exports){
+},{}],252:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -72824,7 +72984,7 @@ function getEventTarget(nativeEvent) {
 }
 
 module.exports = getEventTarget;
-},{}],255:[function(require,module,exports){
+},{}],253:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -72865,7 +73025,7 @@ function getIteratorFn(maybeIterable) {
 }
 
 module.exports = getIteratorFn;
-},{}],256:[function(require,module,exports){
+},{}],254:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -72939,7 +73099,7 @@ function getNodeForCharacterOffset(root, offset) {
 }
 
 module.exports = getNodeForCharacterOffset;
-},{}],257:[function(require,module,exports){
+},{}],255:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -72973,7 +73133,7 @@ function getTextContentAccessor() {
 }
 
 module.exports = getTextContentAccessor;
-},{"fbjs/lib/ExecutionEnvironment":270}],258:[function(require,module,exports){
+},{"fbjs/lib/ExecutionEnvironment":268}],256:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -73088,7 +73248,7 @@ function instantiateReactComponent(node) {
 
 module.exports = instantiateReactComponent;
 }).call(this,require('_process'))
-},{"./Object.assign":162,"./ReactCompositeComponent":173,"./ReactEmptyComponent":194,"./ReactNativeComponent":208,"_process":47,"fbjs/lib/invariant":284,"fbjs/lib/warning":295}],259:[function(require,module,exports){
+},{"./Object.assign":160,"./ReactCompositeComponent":171,"./ReactEmptyComponent":192,"./ReactNativeComponent":206,"_process":44,"fbjs/lib/invariant":282,"fbjs/lib/warning":293}],257:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -73149,7 +73309,7 @@ function isEventSupported(eventNameSuffix, capture) {
 }
 
 module.exports = isEventSupported;
-},{"fbjs/lib/ExecutionEnvironment":270}],260:[function(require,module,exports){
+},{"fbjs/lib/ExecutionEnvironment":268}],258:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -73190,7 +73350,7 @@ function isTextInputElement(elem) {
 }
 
 module.exports = isTextInputElement;
-},{}],261:[function(require,module,exports){
+},{}],259:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -73226,7 +73386,7 @@ function onlyChild(children) {
 
 module.exports = onlyChild;
 }).call(this,require('_process'))
-},{"./ReactElement":192,"_process":47,"fbjs/lib/invariant":284}],262:[function(require,module,exports){
+},{"./ReactElement":190,"_process":44,"fbjs/lib/invariant":282}],260:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -73253,7 +73413,7 @@ function quoteAttributeValueForBrowser(value) {
 }
 
 module.exports = quoteAttributeValueForBrowser;
-},{"./escapeTextContentForBrowser":247}],263:[function(require,module,exports){
+},{"./escapeTextContentForBrowser":245}],261:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -73270,7 +73430,7 @@ module.exports = quoteAttributeValueForBrowser;
 var ReactMount = require('./ReactMount');
 
 module.exports = ReactMount.renderSubtreeIntoContainer;
-},{"./ReactMount":205}],264:[function(require,module,exports){
+},{"./ReactMount":203}],262:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -73361,7 +73521,7 @@ if (ExecutionEnvironment.canUseDOM) {
 }
 
 module.exports = setInnerHTML;
-},{"fbjs/lib/ExecutionEnvironment":270}],265:[function(require,module,exports){
+},{"fbjs/lib/ExecutionEnvironment":268}],263:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -73402,7 +73562,7 @@ if (ExecutionEnvironment.canUseDOM) {
 }
 
 module.exports = setTextContent;
-},{"./escapeTextContentForBrowser":247,"./setInnerHTML":264,"fbjs/lib/ExecutionEnvironment":270}],266:[function(require,module,exports){
+},{"./escapeTextContentForBrowser":245,"./setInnerHTML":262,"fbjs/lib/ExecutionEnvironment":268}],264:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -73446,7 +73606,7 @@ function shouldUpdateReactComponent(prevElement, nextElement) {
 }
 
 module.exports = shouldUpdateReactComponent;
-},{}],267:[function(require,module,exports){
+},{}],265:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -73638,7 +73798,7 @@ function traverseAllChildren(children, callback, traverseContext) {
 
 module.exports = traverseAllChildren;
 }).call(this,require('_process'))
-},{"./ReactCurrentOwner":174,"./ReactElement":192,"./ReactInstanceHandles":201,"./getIteratorFn":255,"_process":47,"fbjs/lib/invariant":284,"fbjs/lib/warning":295}],268:[function(require,module,exports){
+},{"./ReactCurrentOwner":172,"./ReactElement":190,"./ReactInstanceHandles":199,"./getIteratorFn":253,"_process":44,"fbjs/lib/invariant":282,"fbjs/lib/warning":293}],266:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2015, Facebook, Inc.
@@ -74004,7 +74164,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = validateDOMNesting;
 }).call(this,require('_process'))
-},{"./Object.assign":162,"_process":47,"fbjs/lib/emptyFunction":276,"fbjs/lib/warning":295}],269:[function(require,module,exports){
+},{"./Object.assign":160,"_process":44,"fbjs/lib/emptyFunction":274,"fbjs/lib/warning":293}],267:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -74091,7 +74251,7 @@ var EventListener = {
 
 module.exports = EventListener;
 }).call(this,require('_process'))
-},{"./emptyFunction":276,"_process":47}],270:[function(require,module,exports){
+},{"./emptyFunction":274,"_process":44}],268:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -74128,7 +74288,7 @@ var ExecutionEnvironment = {
 };
 
 module.exports = ExecutionEnvironment;
-},{}],271:[function(require,module,exports){
+},{}],269:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -74161,7 +74321,7 @@ function camelize(string) {
 }
 
 module.exports = camelize;
-},{}],272:[function(require,module,exports){
+},{}],270:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -74202,7 +74362,7 @@ function camelizeStyleName(string) {
 }
 
 module.exports = camelizeStyleName;
-},{"./camelize":271}],273:[function(require,module,exports){
+},{"./camelize":269}],271:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -74258,7 +74418,7 @@ function containsNode(_x, _x2) {
 }
 
 module.exports = containsNode;
-},{"./isTextNode":286}],274:[function(require,module,exports){
+},{"./isTextNode":284}],272:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -74344,7 +74504,7 @@ function createArrayFromMixed(obj) {
 }
 
 module.exports = createArrayFromMixed;
-},{"./toArray":294}],275:[function(require,module,exports){
+},{"./toArray":292}],273:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -74431,7 +74591,7 @@ function createNodesFromMarkup(markup, handleScript) {
 
 module.exports = createNodesFromMarkup;
 }).call(this,require('_process'))
-},{"./ExecutionEnvironment":270,"./createArrayFromMixed":274,"./getMarkupWrap":280,"./invariant":284,"_process":47}],276:[function(require,module,exports){
+},{"./ExecutionEnvironment":268,"./createArrayFromMixed":272,"./getMarkupWrap":278,"./invariant":282,"_process":44}],274:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -74470,7 +74630,7 @@ emptyFunction.thatReturnsArgument = function (arg) {
 };
 
 module.exports = emptyFunction;
-},{}],277:[function(require,module,exports){
+},{}],275:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -74493,7 +74653,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = emptyObject;
 }).call(this,require('_process'))
-},{"_process":47}],278:[function(require,module,exports){
+},{"_process":44}],276:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -74520,7 +74680,7 @@ function focusNode(node) {
 }
 
 module.exports = focusNode;
-},{}],279:[function(require,module,exports){
+},{}],277:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -74556,7 +74716,7 @@ function getActiveElement() /*?DOMElement*/{
 }
 
 module.exports = getActiveElement;
-},{}],280:[function(require,module,exports){
+},{}],278:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -74654,7 +74814,7 @@ function getMarkupWrap(nodeName) {
 
 module.exports = getMarkupWrap;
 }).call(this,require('_process'))
-},{"./ExecutionEnvironment":270,"./invariant":284,"_process":47}],281:[function(require,module,exports){
+},{"./ExecutionEnvironment":268,"./invariant":282,"_process":44}],279:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -74693,7 +74853,7 @@ function getUnboundedScrollPosition(scrollable) {
 }
 
 module.exports = getUnboundedScrollPosition;
-},{}],282:[function(require,module,exports){
+},{}],280:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -74727,7 +74887,7 @@ function hyphenate(string) {
 }
 
 module.exports = hyphenate;
-},{}],283:[function(require,module,exports){
+},{}],281:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -74767,7 +74927,7 @@ function hyphenateStyleName(string) {
 }
 
 module.exports = hyphenateStyleName;
-},{"./hyphenate":282}],284:[function(require,module,exports){
+},{"./hyphenate":280}],282:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -74820,7 +74980,7 @@ function invariant(condition, format, a, b, c, d, e, f) {
 
 module.exports = invariant;
 }).call(this,require('_process'))
-},{"_process":47}],285:[function(require,module,exports){
+},{"_process":44}],283:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -74844,7 +75004,7 @@ function isNode(object) {
 }
 
 module.exports = isNode;
-},{}],286:[function(require,module,exports){
+},{}],284:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -74870,7 +75030,7 @@ function isTextNode(object) {
 }
 
 module.exports = isTextNode;
-},{"./isNode":285}],287:[function(require,module,exports){
+},{"./isNode":283}],285:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -74921,7 +75081,7 @@ var keyMirror = function (obj) {
 
 module.exports = keyMirror;
 }).call(this,require('_process'))
-},{"./invariant":284,"_process":47}],288:[function(require,module,exports){
+},{"./invariant":282,"_process":44}],286:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -74957,7 +75117,7 @@ var keyOf = function (oneKeyObj) {
 };
 
 module.exports = keyOf;
-},{}],289:[function(require,module,exports){
+},{}],287:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -75009,7 +75169,7 @@ function mapObject(object, callback, context) {
 }
 
 module.exports = mapObject;
-},{}],290:[function(require,module,exports){
+},{}],288:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -75041,7 +75201,7 @@ function memoizeStringOnly(callback) {
 }
 
 module.exports = memoizeStringOnly;
-},{}],291:[function(require,module,exports){
+},{}],289:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -75065,7 +75225,7 @@ if (ExecutionEnvironment.canUseDOM) {
 }
 
 module.exports = performance || {};
-},{"./ExecutionEnvironment":270}],292:[function(require,module,exports){
+},{"./ExecutionEnvironment":268}],290:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -75100,7 +75260,7 @@ if (performance.now) {
 }
 
 module.exports = performanceNow;
-},{"./performance":291}],293:[function(require,module,exports){
+},{"./performance":289}],291:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -75151,7 +75311,7 @@ function shallowEqual(objA, objB) {
 }
 
 module.exports = shallowEqual;
-},{}],294:[function(require,module,exports){
+},{}],292:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -75211,7 +75371,7 @@ function toArray(obj) {
 
 module.exports = toArray;
 }).call(this,require('_process'))
-},{"./invariant":284,"_process":47}],295:[function(require,module,exports){
+},{"./invariant":282,"_process":44}],293:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014-2015, Facebook, Inc.
@@ -75271,12 +75431,3544 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = warning;
 }).call(this,require('_process'))
-},{"./emptyFunction":276,"_process":47}],296:[function(require,module,exports){
+},{"./emptyFunction":274,"_process":44}],294:[function(require,module,exports){
 'use strict';
 
 module.exports = require('./lib/React');
 
-},{"./lib/React":164}],297:[function(require,module,exports){
+},{"./lib/React":162}],295:[function(require,module,exports){
+/**
+ * selectize.js (v0.12.1)
+ * Copyright (c) 2013–2015 Brian Reavis & contributors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this
+ * file except in compliance with the License. You may obtain a copy of the License at:
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+ * ANY KIND, either express or implied. See the License for the specific language
+ * governing permissions and limitations under the License.
+ *
+ * @author Brian Reavis <brian@thirdroute.com>
+ */
+
+/*jshint curly:false */
+/*jshint browser:true */
+
+(function(root, factory) {
+	if (typeof define === 'function' && define.amd) {
+		define(['jquery','sifter','microplugin'], factory);
+	} else if (typeof exports === 'object') {
+		module.exports = factory(require('jquery'), require('sifter'), require('microplugin'));
+	} else {
+		root.Selectize = factory(root.jQuery, root.Sifter, root.MicroPlugin);
+	}
+}(this, function($, Sifter, MicroPlugin) {
+	'use strict';
+
+	var highlight = function($element, pattern) {
+		if (typeof pattern === 'string' && !pattern.length) return;
+		var regex = (typeof pattern === 'string') ? new RegExp(pattern, 'i') : pattern;
+	
+		var highlight = function(node) {
+			var skip = 0;
+			if (node.nodeType === 3) {
+				var pos = node.data.search(regex);
+				if (pos >= 0 && node.data.length > 0) {
+					var match = node.data.match(regex);
+					var spannode = document.createElement('span');
+					spannode.className = 'highlight';
+					var middlebit = node.splitText(pos);
+					var endbit = middlebit.splitText(match[0].length);
+					var middleclone = middlebit.cloneNode(true);
+					spannode.appendChild(middleclone);
+					middlebit.parentNode.replaceChild(spannode, middlebit);
+					skip = 1;
+				}
+			} else if (node.nodeType === 1 && node.childNodes && !/(script|style)/i.test(node.tagName)) {
+				for (var i = 0; i < node.childNodes.length; ++i) {
+					i += highlight(node.childNodes[i]);
+				}
+			}
+			return skip;
+		};
+	
+		return $element.each(function() {
+			highlight(this);
+		});
+	};
+	
+	var MicroEvent = function() {};
+	MicroEvent.prototype = {
+		on: function(event, fct){
+			this._events = this._events || {};
+			this._events[event] = this._events[event] || [];
+			this._events[event].push(fct);
+		},
+		off: function(event, fct){
+			var n = arguments.length;
+			if (n === 0) return delete this._events;
+			if (n === 1) return delete this._events[event];
+	
+			this._events = this._events || {};
+			if (event in this._events === false) return;
+			this._events[event].splice(this._events[event].indexOf(fct), 1);
+		},
+		trigger: function(event /* , args... */){
+			this._events = this._events || {};
+			if (event in this._events === false) return;
+			for (var i = 0; i < this._events[event].length; i++){
+				this._events[event][i].apply(this, Array.prototype.slice.call(arguments, 1));
+			}
+		}
+	};
+	
+	/**
+	 * Mixin will delegate all MicroEvent.js function in the destination object.
+	 *
+	 * - MicroEvent.mixin(Foobar) will make Foobar able to use MicroEvent
+	 *
+	 * @param {object} the object which will support MicroEvent
+	 */
+	MicroEvent.mixin = function(destObject){
+		var props = ['on', 'off', 'trigger'];
+		for (var i = 0; i < props.length; i++){
+			destObject.prototype[props[i]] = MicroEvent.prototype[props[i]];
+		}
+	};
+	
+	var IS_MAC        = /Mac/.test(navigator.userAgent);
+	
+	var KEY_A         = 65;
+	var KEY_COMMA     = 188;
+	var KEY_RETURN    = 13;
+	var KEY_ESC       = 27;
+	var KEY_LEFT      = 37;
+	var KEY_UP        = 38;
+	var KEY_P         = 80;
+	var KEY_RIGHT     = 39;
+	var KEY_DOWN      = 40;
+	var KEY_N         = 78;
+	var KEY_BACKSPACE = 8;
+	var KEY_DELETE    = 46;
+	var KEY_SHIFT     = 16;
+	var KEY_CMD       = IS_MAC ? 91 : 17;
+	var KEY_CTRL      = IS_MAC ? 18 : 17;
+	var KEY_TAB       = 9;
+	
+	var TAG_SELECT    = 1;
+	var TAG_INPUT     = 2;
+	
+	// for now, android support in general is too spotty to support validity
+	var SUPPORTS_VALIDITY_API = !/android/i.test(window.navigator.userAgent) && !!document.createElement('form').validity;
+	
+	var isset = function(object) {
+		return typeof object !== 'undefined';
+	};
+	
+	/**
+	 * Converts a scalar to its best string representation
+	 * for hash keys and HTML attribute values.
+	 *
+	 * Transformations:
+	 *   'str'     -> 'str'
+	 *   null      -> ''
+	 *   undefined -> ''
+	 *   true      -> '1'
+	 *   false     -> '0'
+	 *   0         -> '0'
+	 *   1         -> '1'
+	 *
+	 * @param {string} value
+	 * @returns {string|null}
+	 */
+	var hash_key = function(value) {
+		if (typeof value === 'undefined' || value === null) return null;
+		if (typeof value === 'boolean') return value ? '1' : '0';
+		return value + '';
+	};
+	
+	/**
+	 * Escapes a string for use within HTML.
+	 *
+	 * @param {string} str
+	 * @returns {string}
+	 */
+	var escape_html = function(str) {
+		return (str + '')
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;');
+	};
+	
+	/**
+	 * Escapes "$" characters in replacement strings.
+	 *
+	 * @param {string} str
+	 * @returns {string}
+	 */
+	var escape_replace = function(str) {
+		return (str + '').replace(/\$/g, '$$$$');
+	};
+	
+	var hook = {};
+	
+	/**
+	 * Wraps `method` on `self` so that `fn`
+	 * is invoked before the original method.
+	 *
+	 * @param {object} self
+	 * @param {string} method
+	 * @param {function} fn
+	 */
+	hook.before = function(self, method, fn) {
+		var original = self[method];
+		self[method] = function() {
+			fn.apply(self, arguments);
+			return original.apply(self, arguments);
+		};
+	};
+	
+	/**
+	 * Wraps `method` on `self` so that `fn`
+	 * is invoked after the original method.
+	 *
+	 * @param {object} self
+	 * @param {string} method
+	 * @param {function} fn
+	 */
+	hook.after = function(self, method, fn) {
+		var original = self[method];
+		self[method] = function() {
+			var result = original.apply(self, arguments);
+			fn.apply(self, arguments);
+			return result;
+		};
+	};
+	
+	/**
+	 * Wraps `fn` so that it can only be invoked once.
+	 *
+	 * @param {function} fn
+	 * @returns {function}
+	 */
+	var once = function(fn) {
+		var called = false;
+		return function() {
+			if (called) return;
+			called = true;
+			fn.apply(this, arguments);
+		};
+	};
+	
+	/**
+	 * Wraps `fn` so that it can only be called once
+	 * every `delay` milliseconds (invoked on the falling edge).
+	 *
+	 * @param {function} fn
+	 * @param {int} delay
+	 * @returns {function}
+	 */
+	var debounce = function(fn, delay) {
+		var timeout;
+		return function() {
+			var self = this;
+			var args = arguments;
+			window.clearTimeout(timeout);
+			timeout = window.setTimeout(function() {
+				fn.apply(self, args);
+			}, delay);
+		};
+	};
+	
+	/**
+	 * Debounce all fired events types listed in `types`
+	 * while executing the provided `fn`.
+	 *
+	 * @param {object} self
+	 * @param {array} types
+	 * @param {function} fn
+	 */
+	var debounce_events = function(self, types, fn) {
+		var type;
+		var trigger = self.trigger;
+		var event_args = {};
+	
+		// override trigger method
+		self.trigger = function() {
+			var type = arguments[0];
+			if (types.indexOf(type) !== -1) {
+				event_args[type] = arguments;
+			} else {
+				return trigger.apply(self, arguments);
+			}
+		};
+	
+		// invoke provided function
+		fn.apply(self, []);
+		self.trigger = trigger;
+	
+		// trigger queued events
+		for (type in event_args) {
+			if (event_args.hasOwnProperty(type)) {
+				trigger.apply(self, event_args[type]);
+			}
+		}
+	};
+	
+	/**
+	 * A workaround for http://bugs.jquery.com/ticket/6696
+	 *
+	 * @param {object} $parent - Parent element to listen on.
+	 * @param {string} event - Event name.
+	 * @param {string} selector - Descendant selector to filter by.
+	 * @param {function} fn - Event handler.
+	 */
+	var watchChildEvent = function($parent, event, selector, fn) {
+		$parent.on(event, selector, function(e) {
+			var child = e.target;
+			while (child && child.parentNode !== $parent[0]) {
+				child = child.parentNode;
+			}
+			e.currentTarget = child;
+			return fn.apply(this, [e]);
+		});
+	};
+	
+	/**
+	 * Determines the current selection within a text input control.
+	 * Returns an object containing:
+	 *   - start
+	 *   - length
+	 *
+	 * @param {object} input
+	 * @returns {object}
+	 */
+	var getSelection = function(input) {
+		var result = {};
+		if ('selectionStart' in input) {
+			result.start = input.selectionStart;
+			result.length = input.selectionEnd - result.start;
+		} else if (document.selection) {
+			input.focus();
+			var sel = document.selection.createRange();
+			var selLen = document.selection.createRange().text.length;
+			sel.moveStart('character', -input.value.length);
+			result.start = sel.text.length - selLen;
+			result.length = selLen;
+		}
+		return result;
+	};
+	
+	/**
+	 * Copies CSS properties from one element to another.
+	 *
+	 * @param {object} $from
+	 * @param {object} $to
+	 * @param {array} properties
+	 */
+	var transferStyles = function($from, $to, properties) {
+		var i, n, styles = {};
+		if (properties) {
+			for (i = 0, n = properties.length; i < n; i++) {
+				styles[properties[i]] = $from.css(properties[i]);
+			}
+		} else {
+			styles = $from.css();
+		}
+		$to.css(styles);
+	};
+	
+	/**
+	 * Measures the width of a string within a
+	 * parent element (in pixels).
+	 *
+	 * @param {string} str
+	 * @param {object} $parent
+	 * @returns {int}
+	 */
+	var measureString = function(str, $parent) {
+		if (!str) {
+			return 0;
+		}
+	
+		var $test = $('<test>').css({
+			position: 'absolute',
+			top: -99999,
+			left: -99999,
+			width: 'auto',
+			padding: 0,
+			whiteSpace: 'pre'
+		}).text(str).appendTo('body');
+	
+		transferStyles($parent, $test, [
+			'letterSpacing',
+			'fontSize',
+			'fontFamily',
+			'fontWeight',
+			'textTransform'
+		]);
+	
+		var width = $test.width();
+		$test.remove();
+	
+		return width;
+	};
+	
+	/**
+	 * Sets up an input to grow horizontally as the user
+	 * types. If the value is changed manually, you can
+	 * trigger the "update" handler to resize:
+	 *
+	 * $input.trigger('update');
+	 *
+	 * @param {object} $input
+	 */
+	var autoGrow = function($input) {
+		var currentWidth = null;
+	
+		var update = function(e, options) {
+			var value, keyCode, printable, placeholder, width;
+			var shift, character, selection;
+			e = e || window.event || {};
+			options = options || {};
+	
+			if (e.metaKey || e.altKey) return;
+			if (!options.force && $input.data('grow') === false) return;
+	
+			value = $input.val();
+			if (e.type && e.type.toLowerCase() === 'keydown') {
+				keyCode = e.keyCode;
+				printable = (
+					(keyCode >= 97 && keyCode <= 122) || // a-z
+					(keyCode >= 65 && keyCode <= 90)  || // A-Z
+					(keyCode >= 48 && keyCode <= 57)  || // 0-9
+					keyCode === 32 // space
+				);
+	
+				if (keyCode === KEY_DELETE || keyCode === KEY_BACKSPACE) {
+					selection = getSelection($input[0]);
+					if (selection.length) {
+						value = value.substring(0, selection.start) + value.substring(selection.start + selection.length);
+					} else if (keyCode === KEY_BACKSPACE && selection.start) {
+						value = value.substring(0, selection.start - 1) + value.substring(selection.start + 1);
+					} else if (keyCode === KEY_DELETE && typeof selection.start !== 'undefined') {
+						value = value.substring(0, selection.start) + value.substring(selection.start + 1);
+					}
+				} else if (printable) {
+					shift = e.shiftKey;
+					character = String.fromCharCode(e.keyCode);
+					if (shift) character = character.toUpperCase();
+					else character = character.toLowerCase();
+					value += character;
+				}
+			}
+	
+			placeholder = $input.attr('placeholder');
+			if (!value && placeholder) {
+				value = placeholder;
+			}
+	
+			width = measureString(value, $input) + 4;
+			if (width !== currentWidth) {
+				currentWidth = width;
+				$input.width(width);
+				$input.triggerHandler('resize');
+			}
+		};
+	
+		$input.on('keydown keyup update blur', update);
+		update();
+	};
+	
+	var Selectize = function($input, settings) {
+		var key, i, n, dir, input, self = this;
+		input = $input[0];
+		input.selectize = self;
+	
+		// detect rtl environment
+		var computedStyle = window.getComputedStyle && window.getComputedStyle(input, null);
+		dir = computedStyle ? computedStyle.getPropertyValue('direction') : input.currentStyle && input.currentStyle.direction;
+		dir = dir || $input.parents('[dir]:first').attr('dir') || '';
+	
+		// setup default state
+		$.extend(self, {
+			order            : 0,
+			settings         : settings,
+			$input           : $input,
+			tabIndex         : $input.attr('tabindex') || '',
+			tagType          : input.tagName.toLowerCase() === 'select' ? TAG_SELECT : TAG_INPUT,
+			rtl              : /rtl/i.test(dir),
+	
+			eventNS          : '.selectize' + (++Selectize.count),
+			highlightedValue : null,
+			isOpen           : false,
+			isDisabled       : false,
+			isRequired       : $input.is('[required]'),
+			isInvalid        : false,
+			isLocked         : false,
+			isFocused        : false,
+			isInputHidden    : false,
+			isSetup          : false,
+			isShiftDown      : false,
+			isCmdDown        : false,
+			isCtrlDown       : false,
+			ignoreFocus      : false,
+			ignoreBlur       : false,
+			ignoreHover      : false,
+			hasOptions       : false,
+			currentResults   : null,
+			lastValue        : '',
+			caretPos         : 0,
+			loading          : 0,
+			loadedSearches   : {},
+	
+			$activeOption    : null,
+			$activeItems     : [],
+	
+			optgroups        : {},
+			options          : {},
+			userOptions      : {},
+			items            : [],
+			renderCache      : {},
+			onSearchChange   : settings.loadThrottle === null ? self.onSearchChange : debounce(self.onSearchChange, settings.loadThrottle)
+		});
+	
+		// search system
+		self.sifter = new Sifter(this.options, {diacritics: settings.diacritics});
+	
+		// build options table
+		if (self.settings.options) {
+			for (i = 0, n = self.settings.options.length; i < n; i++) {
+				self.registerOption(self.settings.options[i]);
+			}
+			delete self.settings.options;
+		}
+	
+		// build optgroup table
+		if (self.settings.optgroups) {
+			for (i = 0, n = self.settings.optgroups.length; i < n; i++) {
+				self.registerOptionGroup(self.settings.optgroups[i]);
+			}
+			delete self.settings.optgroups;
+		}
+	
+		// option-dependent defaults
+		self.settings.mode = self.settings.mode || (self.settings.maxItems === 1 ? 'single' : 'multi');
+		if (typeof self.settings.hideSelected !== 'boolean') {
+			self.settings.hideSelected = self.settings.mode === 'multi';
+		}
+	
+		self.initializePlugins(self.settings.plugins);
+		self.setupCallbacks();
+		self.setupTemplates();
+		self.setup();
+	};
+	
+	// mixins
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	
+	MicroEvent.mixin(Selectize);
+	MicroPlugin.mixin(Selectize);
+	
+	// methods
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	
+	$.extend(Selectize.prototype, {
+	
+		/**
+		 * Creates all elements and sets up event bindings.
+		 */
+		setup: function() {
+			var self      = this;
+			var settings  = self.settings;
+			var eventNS   = self.eventNS;
+			var $window   = $(window);
+			var $document = $(document);
+			var $input    = self.$input;
+	
+			var $wrapper;
+			var $control;
+			var $control_input;
+			var $dropdown;
+			var $dropdown_content;
+			var $dropdown_parent;
+			var inputMode;
+			var timeout_blur;
+			var timeout_focus;
+			var classes;
+			var classes_plugins;
+	
+			inputMode         = self.settings.mode;
+			classes           = $input.attr('class') || '';
+	
+			$wrapper          = $('<div>').addClass(settings.wrapperClass).addClass(classes).addClass(inputMode);
+			$control          = $('<div>').addClass(settings.inputClass).addClass('items').appendTo($wrapper);
+			$control_input    = $('<input type="text" autocomplete="off" />').appendTo($control).attr('tabindex', $input.is(':disabled') ? '-1' : self.tabIndex);
+			$dropdown_parent  = $(settings.dropdownParent || $wrapper);
+			$dropdown         = $('<div>').addClass(settings.dropdownClass).addClass(inputMode).hide().appendTo($dropdown_parent);
+			$dropdown_content = $('<div>').addClass(settings.dropdownContentClass).appendTo($dropdown);
+	
+			if(self.settings.copyClassesToDropdown) {
+				$dropdown.addClass(classes);
+			}
+	
+			$wrapper.css({
+				width: $input[0].style.width
+			});
+	
+			if (self.plugins.names.length) {
+				classes_plugins = 'plugin-' + self.plugins.names.join(' plugin-');
+				$wrapper.addClass(classes_plugins);
+				$dropdown.addClass(classes_plugins);
+			}
+	
+			if ((settings.maxItems === null || settings.maxItems > 1) && self.tagType === TAG_SELECT) {
+				$input.attr('multiple', 'multiple');
+			}
+	
+			if (self.settings.placeholder) {
+				$control_input.attr('placeholder', settings.placeholder);
+			}
+	
+			// if splitOn was not passed in, construct it from the delimiter to allow pasting universally
+			if (!self.settings.splitOn && self.settings.delimiter) {
+				var delimiterEscaped = self.settings.delimiter.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+				self.settings.splitOn = new RegExp('\\s*' + delimiterEscaped + '+\\s*');
+			}
+	
+			if ($input.attr('autocorrect')) {
+				$control_input.attr('autocorrect', $input.attr('autocorrect'));
+			}
+	
+			if ($input.attr('autocapitalize')) {
+				$control_input.attr('autocapitalize', $input.attr('autocapitalize'));
+			}
+	
+			self.$wrapper          = $wrapper;
+			self.$control          = $control;
+			self.$control_input    = $control_input;
+			self.$dropdown         = $dropdown;
+			self.$dropdown_content = $dropdown_content;
+	
+			$dropdown.on('mouseenter', '[data-selectable]', function() { return self.onOptionHover.apply(self, arguments); });
+			$dropdown.on('mousedown click', '[data-selectable]', function() { return self.onOptionSelect.apply(self, arguments); });
+			watchChildEvent($control, 'mousedown', '*:not(input)', function() { return self.onItemSelect.apply(self, arguments); });
+			autoGrow($control_input);
+	
+			$control.on({
+				mousedown : function() { return self.onMouseDown.apply(self, arguments); },
+				click     : function() { return self.onClick.apply(self, arguments); }
+			});
+	
+			$control_input.on({
+				mousedown : function(e) { e.stopPropagation(); },
+				keydown   : function() { return self.onKeyDown.apply(self, arguments); },
+				keyup     : function() { return self.onKeyUp.apply(self, arguments); },
+				keypress  : function() { return self.onKeyPress.apply(self, arguments); },
+				resize    : function() { self.positionDropdown.apply(self, []); },
+				blur      : function() { return self.onBlur.apply(self, arguments); },
+				focus     : function() { self.ignoreBlur = false; return self.onFocus.apply(self, arguments); },
+				paste     : function() { return self.onPaste.apply(self, arguments); }
+			});
+	
+			$document.on('keydown' + eventNS, function(e) {
+				self.isCmdDown = e[IS_MAC ? 'metaKey' : 'ctrlKey'];
+				self.isCtrlDown = e[IS_MAC ? 'altKey' : 'ctrlKey'];
+				self.isShiftDown = e.shiftKey;
+			});
+	
+			$document.on('keyup' + eventNS, function(e) {
+				if (e.keyCode === KEY_CTRL) self.isCtrlDown = false;
+				if (e.keyCode === KEY_SHIFT) self.isShiftDown = false;
+				if (e.keyCode === KEY_CMD) self.isCmdDown = false;
+			});
+	
+			$document.on('mousedown' + eventNS, function(e) {
+				if (self.isFocused) {
+					// prevent events on the dropdown scrollbar from causing the control to blur
+					if (e.target === self.$dropdown[0] || e.target.parentNode === self.$dropdown[0]) {
+						return false;
+					}
+					// blur on click outside
+					if (!self.$control.has(e.target).length && e.target !== self.$control[0]) {
+						self.blur(e.target);
+					}
+				}
+			});
+	
+			$window.on(['scroll' + eventNS, 'resize' + eventNS].join(' '), function() {
+				if (self.isOpen) {
+					self.positionDropdown.apply(self, arguments);
+				}
+			});
+			$window.on('mousemove' + eventNS, function() {
+				self.ignoreHover = false;
+			});
+	
+			// store original children and tab index so that they can be
+			// restored when the destroy() method is called.
+			this.revertSettings = {
+				$children : $input.children().detach(),
+				tabindex  : $input.attr('tabindex')
+			};
+	
+			$input.attr('tabindex', -1).hide().after(self.$wrapper);
+	
+			if ($.isArray(settings.items)) {
+				self.setValue(settings.items);
+				delete settings.items;
+			}
+	
+			// feature detect for the validation API
+			if (SUPPORTS_VALIDITY_API) {
+				$input.on('invalid' + eventNS, function(e) {
+					e.preventDefault();
+					self.isInvalid = true;
+					self.refreshState();
+				});
+			}
+	
+			self.updateOriginalInput();
+			self.refreshItems();
+			self.refreshState();
+			self.updatePlaceholder();
+			self.isSetup = true;
+	
+			if ($input.is(':disabled')) {
+				self.disable();
+			}
+	
+			self.on('change', this.onChange);
+	
+			$input.data('selectize', self);
+			$input.addClass('selectized');
+			self.trigger('initialize');
+	
+			// preload options
+			if (settings.preload === true) {
+				self.onSearchChange('');
+			}
+	
+		},
+	
+		/**
+		 * Sets up default rendering functions.
+		 */
+		setupTemplates: function() {
+			var self = this;
+			var field_label = self.settings.labelField;
+			var field_optgroup = self.settings.optgroupLabelField;
+	
+			var templates = {
+				'optgroup': function(data) {
+					return '<div class="optgroup">' + data.html + '</div>';
+				},
+				'optgroup_header': function(data, escape) {
+					return '<div class="optgroup-header">' + escape(data[field_optgroup]) + '</div>';
+				},
+				'option': function(data, escape) {
+					return '<div class="option">' + escape(data[field_label]) + '</div>';
+				},
+				'item': function(data, escape) {
+					return '<div class="item">' + escape(data[field_label]) + '</div>';
+				},
+				'option_create': function(data, escape) {
+					return '<div class="create">Add <strong>' + escape(data.input) + '</strong>&hellip;</div>';
+				}
+			};
+	
+			self.settings.render = $.extend({}, templates, self.settings.render);
+		},
+	
+		/**
+		 * Maps fired events to callbacks provided
+		 * in the settings used when creating the control.
+		 */
+		setupCallbacks: function() {
+			var key, fn, callbacks = {
+				'initialize'      : 'onInitialize',
+				'change'          : 'onChange',
+				'item_add'        : 'onItemAdd',
+				'item_remove'     : 'onItemRemove',
+				'clear'           : 'onClear',
+				'option_add'      : 'onOptionAdd',
+				'option_remove'   : 'onOptionRemove',
+				'option_clear'    : 'onOptionClear',
+				'optgroup_add'    : 'onOptionGroupAdd',
+				'optgroup_remove' : 'onOptionGroupRemove',
+				'optgroup_clear'  : 'onOptionGroupClear',
+				'dropdown_open'   : 'onDropdownOpen',
+				'dropdown_close'  : 'onDropdownClose',
+				'type'            : 'onType',
+				'load'            : 'onLoad',
+				'focus'           : 'onFocus',
+				'blur'            : 'onBlur'
+			};
+	
+			for (key in callbacks) {
+				if (callbacks.hasOwnProperty(key)) {
+					fn = this.settings[callbacks[key]];
+					if (fn) this.on(key, fn);
+				}
+			}
+		},
+	
+		/**
+		 * Triggered when the main control element
+		 * has a click event.
+		 *
+		 * @param {object} e
+		 * @return {boolean}
+		 */
+		onClick: function(e) {
+			var self = this;
+	
+			// necessary for mobile webkit devices (manual focus triggering
+			// is ignored unless invoked within a click event)
+			if (!self.isFocused) {
+				self.focus();
+				e.preventDefault();
+			}
+		},
+	
+		/**
+		 * Triggered when the main control element
+		 * has a mouse down event.
+		 *
+		 * @param {object} e
+		 * @return {boolean}
+		 */
+		onMouseDown: function(e) {
+			var self = this;
+			var defaultPrevented = e.isDefaultPrevented();
+			var $target = $(e.target);
+	
+			if (self.isFocused) {
+				// retain focus by preventing native handling. if the
+				// event target is the input it should not be modified.
+				// otherwise, text selection within the input won't work.
+				if (e.target !== self.$control_input[0]) {
+					if (self.settings.mode === 'single') {
+						// toggle dropdown
+						self.isOpen ? self.close() : self.open();
+					} else if (!defaultPrevented) {
+						self.setActiveItem(null);
+					}
+					return false;
+				}
+			} else {
+				// give control focus
+				if (!defaultPrevented) {
+					window.setTimeout(function() {
+						self.focus();
+					}, 0);
+				}
+			}
+		},
+	
+		/**
+		 * Triggered when the value of the control has been changed.
+		 * This should propagate the event to the original DOM
+		 * input / select element.
+		 */
+		onChange: function() {
+			this.$input.trigger('change');
+		},
+	
+		/**
+		 * Triggered on <input> paste.
+		 *
+		 * @param {object} e
+		 * @returns {boolean}
+		 */
+		onPaste: function(e) {
+			var self = this;
+			if (self.isFull() || self.isInputHidden || self.isLocked) {
+				e.preventDefault();
+			} else {
+				// If a regex or string is included, this will split the pasted
+				// input and create Items for each separate value
+				if (self.settings.splitOn) {
+					setTimeout(function() {
+						var splitInput = $.trim(self.$control_input.val() || '').split(self.settings.splitOn);
+						for (var i = 0, n = splitInput.length; i < n; i++) {
+							self.createItem(splitInput[i]);
+						}
+					}, 0);
+				}
+			}
+		},
+	
+		/**
+		 * Triggered on <input> keypress.
+		 *
+		 * @param {object} e
+		 * @returns {boolean}
+		 */
+		onKeyPress: function(e) {
+			if (this.isLocked) return e && e.preventDefault();
+			var character = String.fromCharCode(e.keyCode || e.which);
+			if (this.settings.create && this.settings.mode === 'multi' && character === this.settings.delimiter) {
+				this.createItem();
+				e.preventDefault();
+				return false;
+			}
+		},
+	
+		/**
+		 * Triggered on <input> keydown.
+		 *
+		 * @param {object} e
+		 * @returns {boolean}
+		 */
+		onKeyDown: function(e) {
+			var isInput = e.target === this.$control_input[0];
+			var self = this;
+	
+			if (self.isLocked) {
+				if (e.keyCode !== KEY_TAB) {
+					e.preventDefault();
+				}
+				return;
+			}
+	
+			switch (e.keyCode) {
+				case KEY_A:
+					if (self.isCmdDown) {
+						self.selectAll();
+						return;
+					}
+					break;
+				case KEY_ESC:
+					if (self.isOpen) {
+						e.preventDefault();
+						e.stopPropagation();
+						self.close();
+					}
+					return;
+				case KEY_N:
+					if (!e.ctrlKey || e.altKey) break;
+				case KEY_DOWN:
+					if (!self.isOpen && self.hasOptions) {
+						self.open();
+					} else if (self.$activeOption) {
+						self.ignoreHover = true;
+						var $next = self.getAdjacentOption(self.$activeOption, 1);
+						if ($next.length) self.setActiveOption($next, true, true);
+					}
+					e.preventDefault();
+					return;
+				case KEY_P:
+					if (!e.ctrlKey || e.altKey) break;
+				case KEY_UP:
+					if (self.$activeOption) {
+						self.ignoreHover = true;
+						var $prev = self.getAdjacentOption(self.$activeOption, -1);
+						if ($prev.length) self.setActiveOption($prev, true, true);
+					}
+					e.preventDefault();
+					return;
+				case KEY_RETURN:
+					if (self.isOpen && self.$activeOption) {
+						self.onOptionSelect({currentTarget: self.$activeOption});
+						e.preventDefault();
+					}
+					return;
+				case KEY_LEFT:
+					self.advanceSelection(-1, e);
+					return;
+				case KEY_RIGHT:
+					self.advanceSelection(1, e);
+					return;
+				case KEY_TAB:
+					if (self.settings.selectOnTab && self.isOpen && self.$activeOption) {
+						self.onOptionSelect({currentTarget: self.$activeOption});
+	
+						// Default behaviour is to jump to the next field, we only want this
+						// if the current field doesn't accept any more entries
+						if (!self.isFull()) {
+							e.preventDefault();
+						}
+					}
+					if (self.settings.create && self.createItem()) {
+						e.preventDefault();
+					}
+					return;
+				case KEY_BACKSPACE:
+				case KEY_DELETE:
+					self.deleteSelection(e);
+					return;
+			}
+	
+			if ((self.isFull() || self.isInputHidden) && !(IS_MAC ? e.metaKey : e.ctrlKey)) {
+				e.preventDefault();
+				return;
+			}
+		},
+	
+		/**
+		 * Triggered on <input> keyup.
+		 *
+		 * @param {object} e
+		 * @returns {boolean}
+		 */
+		onKeyUp: function(e) {
+			var self = this;
+	
+			if (self.isLocked) return e && e.preventDefault();
+			var value = self.$control_input.val() || '';
+			if (self.lastValue !== value) {
+				self.lastValue = value;
+				self.onSearchChange(value);
+				self.refreshOptions();
+				self.trigger('type', value);
+			}
+		},
+	
+		/**
+		 * Invokes the user-provide option provider / loader.
+		 *
+		 * Note: this function is debounced in the Selectize
+		 * constructor (by `settings.loadDelay` milliseconds)
+		 *
+		 * @param {string} value
+		 */
+		onSearchChange: function(value) {
+			var self = this;
+			var fn = self.settings.load;
+			if (!fn) return;
+			if (self.loadedSearches.hasOwnProperty(value)) return;
+			self.loadedSearches[value] = true;
+			self.load(function(callback) {
+				fn.apply(self, [value, callback]);
+			});
+		},
+	
+		/**
+		 * Triggered on <input> focus.
+		 *
+		 * @param {object} e (optional)
+		 * @returns {boolean}
+		 */
+		onFocus: function(e) {
+			var self = this;
+			var wasFocused = self.isFocused;
+	
+			if (self.isDisabled) {
+				self.blur();
+				e && e.preventDefault();
+				return false;
+			}
+	
+			if (self.ignoreFocus) return;
+			self.isFocused = true;
+			if (self.settings.preload === 'focus') self.onSearchChange('');
+	
+			if (!wasFocused) self.trigger('focus');
+	
+			if (!self.$activeItems.length) {
+				self.showInput();
+				self.setActiveItem(null);
+				self.refreshOptions(!!self.settings.openOnFocus);
+			}
+	
+			self.refreshState();
+		},
+	
+		/**
+		 * Triggered on <input> blur.
+		 *
+		 * @param {object} e
+		 * @param {Element} dest
+		 */
+		onBlur: function(e, dest) {
+			var self = this;
+			if (!self.isFocused) return;
+			self.isFocused = false;
+	
+			if (self.ignoreFocus) {
+				return;
+			} else if (!self.ignoreBlur && document.activeElement === self.$dropdown_content[0]) {
+				// necessary to prevent IE closing the dropdown when the scrollbar is clicked
+				self.ignoreBlur = true;
+				self.onFocus(e);
+				return;
+			}
+	
+			var deactivate = function() {
+				self.close();
+				self.setTextboxValue('');
+				self.setActiveItem(null);
+				self.setActiveOption(null);
+				self.setCaret(self.items.length);
+				self.refreshState();
+	
+				// IE11 bug: element still marked as active
+				(dest || document.body).focus();
+	
+				self.ignoreFocus = false;
+				self.trigger('blur');
+			};
+	
+			self.ignoreFocus = true;
+			if (self.settings.create && self.settings.createOnBlur) {
+				self.createItem(null, false, deactivate);
+			} else {
+				deactivate();
+			}
+		},
+	
+		/**
+		 * Triggered when the user rolls over
+		 * an option in the autocomplete dropdown menu.
+		 *
+		 * @param {object} e
+		 * @returns {boolean}
+		 */
+		onOptionHover: function(e) {
+			if (this.ignoreHover) return;
+			this.setActiveOption(e.currentTarget, false);
+		},
+	
+		/**
+		 * Triggered when the user clicks on an option
+		 * in the autocomplete dropdown menu.
+		 *
+		 * @param {object} e
+		 * @returns {boolean}
+		 */
+		onOptionSelect: function(e) {
+			var value, $target, $option, self = this;
+	
+			if (e.preventDefault) {
+				e.preventDefault();
+				e.stopPropagation();
+			}
+	
+			$target = $(e.currentTarget);
+			if ($target.hasClass('create')) {
+				self.createItem(null, function() {
+					if (self.settings.closeAfterSelect) {
+						self.close();
+					}
+				});
+			} else {
+				value = $target.attr('data-value');
+				if (typeof value !== 'undefined') {
+					self.lastQuery = null;
+					self.setTextboxValue('');
+					self.addItem(value);
+					if (self.settings.closeAfterSelect) {
+						self.close();
+					} else if (!self.settings.hideSelected && e.type && /mouse/.test(e.type)) {
+						self.setActiveOption(self.getOption(value));
+					}
+				}
+			}
+		},
+	
+		/**
+		 * Triggered when the user clicks on an item
+		 * that has been selected.
+		 *
+		 * @param {object} e
+		 * @returns {boolean}
+		 */
+		onItemSelect: function(e) {
+			var self = this;
+	
+			if (self.isLocked) return;
+			if (self.settings.mode === 'multi') {
+				e.preventDefault();
+				self.setActiveItem(e.currentTarget, e);
+			}
+		},
+	
+		/**
+		 * Invokes the provided method that provides
+		 * results to a callback---which are then added
+		 * as options to the control.
+		 *
+		 * @param {function} fn
+		 */
+		load: function(fn) {
+			var self = this;
+			var $wrapper = self.$wrapper.addClass(self.settings.loadingClass);
+	
+			self.loading++;
+			fn.apply(self, [function(results) {
+				self.loading = Math.max(self.loading - 1, 0);
+				if (results && results.length) {
+					self.addOption(results);
+					self.refreshOptions(self.isFocused && !self.isInputHidden);
+				}
+				if (!self.loading) {
+					$wrapper.removeClass(self.settings.loadingClass);
+				}
+				self.trigger('load', results);
+			}]);
+		},
+	
+		/**
+		 * Sets the input field of the control to the specified value.
+		 *
+		 * @param {string} value
+		 */
+		setTextboxValue: function(value) {
+			var $input = this.$control_input;
+			var changed = $input.val() !== value;
+			if (changed) {
+				$input.val(value).triggerHandler('update');
+				this.lastValue = value;
+			}
+		},
+	
+		/**
+		 * Returns the value of the control. If multiple items
+		 * can be selected (e.g. <select multiple>), this returns
+		 * an array. If only one item can be selected, this
+		 * returns a string.
+		 *
+		 * @returns {mixed}
+		 */
+		getValue: function() {
+			if (this.tagType === TAG_SELECT && this.$input.attr('multiple')) {
+				return this.items;
+			} else {
+				return this.items.join(this.settings.delimiter);
+			}
+		},
+	
+		/**
+		 * Resets the selected items to the given value.
+		 *
+		 * @param {mixed} value
+		 */
+		setValue: function(value, silent) {
+			var events = silent ? [] : ['change'];
+	
+			debounce_events(this, events, function() {
+				this.clear(silent);
+				this.addItems(value, silent);
+			});
+		},
+	
+		/**
+		 * Sets the selected item.
+		 *
+		 * @param {object} $item
+		 * @param {object} e (optional)
+		 */
+		setActiveItem: function($item, e) {
+			var self = this;
+			var eventName;
+			var i, idx, begin, end, item, swap;
+			var $last;
+	
+			if (self.settings.mode === 'single') return;
+			$item = $($item);
+	
+			// clear the active selection
+			if (!$item.length) {
+				$(self.$activeItems).removeClass('active');
+				self.$activeItems = [];
+				if (self.isFocused) {
+					self.showInput();
+				}
+				return;
+			}
+	
+			// modify selection
+			eventName = e && e.type.toLowerCase();
+	
+			if (eventName === 'mousedown' && self.isShiftDown && self.$activeItems.length) {
+				$last = self.$control.children('.active:last');
+				begin = Array.prototype.indexOf.apply(self.$control[0].childNodes, [$last[0]]);
+				end   = Array.prototype.indexOf.apply(self.$control[0].childNodes, [$item[0]]);
+				if (begin > end) {
+					swap  = begin;
+					begin = end;
+					end   = swap;
+				}
+				for (i = begin; i <= end; i++) {
+					item = self.$control[0].childNodes[i];
+					if (self.$activeItems.indexOf(item) === -1) {
+						$(item).addClass('active');
+						self.$activeItems.push(item);
+					}
+				}
+				e.preventDefault();
+			} else if ((eventName === 'mousedown' && self.isCtrlDown) || (eventName === 'keydown' && this.isShiftDown)) {
+				if ($item.hasClass('active')) {
+					idx = self.$activeItems.indexOf($item[0]);
+					self.$activeItems.splice(idx, 1);
+					$item.removeClass('active');
+				} else {
+					self.$activeItems.push($item.addClass('active')[0]);
+				}
+			} else {
+				$(self.$activeItems).removeClass('active');
+				self.$activeItems = [$item.addClass('active')[0]];
+			}
+	
+			// ensure control has focus
+			self.hideInput();
+			if (!this.isFocused) {
+				self.focus();
+			}
+		},
+	
+		/**
+		 * Sets the selected item in the dropdown menu
+		 * of available options.
+		 *
+		 * @param {object} $object
+		 * @param {boolean} scroll
+		 * @param {boolean} animate
+		 */
+		setActiveOption: function($option, scroll, animate) {
+			var height_menu, height_item, y;
+			var scroll_top, scroll_bottom;
+			var self = this;
+	
+			if (self.$activeOption) self.$activeOption.removeClass('active');
+			self.$activeOption = null;
+	
+			$option = $($option);
+			if (!$option.length) return;
+	
+			self.$activeOption = $option.addClass('active');
+	
+			if (scroll || !isset(scroll)) {
+	
+				height_menu   = self.$dropdown_content.height();
+				height_item   = self.$activeOption.outerHeight(true);
+				scroll        = self.$dropdown_content.scrollTop() || 0;
+				y             = self.$activeOption.offset().top - self.$dropdown_content.offset().top + scroll;
+				scroll_top    = y;
+				scroll_bottom = y - height_menu + height_item;
+	
+				if (y + height_item > height_menu + scroll) {
+					self.$dropdown_content.stop().animate({scrollTop: scroll_bottom}, animate ? self.settings.scrollDuration : 0);
+				} else if (y < scroll) {
+					self.$dropdown_content.stop().animate({scrollTop: scroll_top}, animate ? self.settings.scrollDuration : 0);
+				}
+	
+			}
+		},
+	
+		/**
+		 * Selects all items (CTRL + A).
+		 */
+		selectAll: function() {
+			var self = this;
+			if (self.settings.mode === 'single') return;
+	
+			self.$activeItems = Array.prototype.slice.apply(self.$control.children(':not(input)').addClass('active'));
+			if (self.$activeItems.length) {
+				self.hideInput();
+				self.close();
+			}
+			self.focus();
+		},
+	
+		/**
+		 * Hides the input element out of view, while
+		 * retaining its focus.
+		 */
+		hideInput: function() {
+			var self = this;
+	
+			self.setTextboxValue('');
+			self.$control_input.css({opacity: 0, position: 'absolute', left: self.rtl ? 10000 : -10000});
+			self.isInputHidden = true;
+		},
+	
+		/**
+		 * Restores input visibility.
+		 */
+		showInput: function() {
+			this.$control_input.css({opacity: 1, position: 'relative', left: 0});
+			this.isInputHidden = false;
+		},
+	
+		/**
+		 * Gives the control focus.
+		 */
+		focus: function() {
+			var self = this;
+			if (self.isDisabled) return;
+	
+			self.ignoreFocus = true;
+			self.$control_input[0].focus();
+			window.setTimeout(function() {
+				self.ignoreFocus = false;
+				self.onFocus();
+			}, 0);
+		},
+	
+		/**
+		 * Forces the control out of focus.
+		 *
+		 * @param {Element} dest
+		 */
+		blur: function(dest) {
+			this.$control_input[0].blur();
+			this.onBlur(null, dest);
+		},
+	
+		/**
+		 * Returns a function that scores an object
+		 * to show how good of a match it is to the
+		 * provided query.
+		 *
+		 * @param {string} query
+		 * @param {object} options
+		 * @return {function}
+		 */
+		getScoreFunction: function(query) {
+			return this.sifter.getScoreFunction(query, this.getSearchOptions());
+		},
+	
+		/**
+		 * Returns search options for sifter (the system
+		 * for scoring and sorting results).
+		 *
+		 * @see https://github.com/brianreavis/sifter.js
+		 * @return {object}
+		 */
+		getSearchOptions: function() {
+			var settings = this.settings;
+			var sort = settings.sortField;
+			if (typeof sort === 'string') {
+				sort = [{field: sort}];
+			}
+	
+			return {
+				fields      : settings.searchField,
+				conjunction : settings.searchConjunction,
+				sort        : sort
+			};
+		},
+	
+		/**
+		 * Searches through available options and returns
+		 * a sorted array of matches.
+		 *
+		 * Returns an object containing:
+		 *
+		 *   - query {string}
+		 *   - tokens {array}
+		 *   - total {int}
+		 *   - items {array}
+		 *
+		 * @param {string} query
+		 * @returns {object}
+		 */
+		search: function(query) {
+			var i, value, score, result, calculateScore;
+			var self     = this;
+			var settings = self.settings;
+			var options  = this.getSearchOptions();
+	
+			// validate user-provided result scoring function
+			if (settings.score) {
+				calculateScore = self.settings.score.apply(this, [query]);
+				if (typeof calculateScore !== 'function') {
+					throw new Error('Selectize "score" setting must be a function that returns a function');
+				}
+			}
+	
+			// perform search
+			if (query !== self.lastQuery) {
+				self.lastQuery = query;
+				result = self.sifter.search(query, $.extend(options, {score: calculateScore}));
+				self.currentResults = result;
+			} else {
+				result = $.extend(true, {}, self.currentResults);
+			}
+	
+			// filter out selected items
+			if (settings.hideSelected) {
+				for (i = result.items.length - 1; i >= 0; i--) {
+					if (self.items.indexOf(hash_key(result.items[i].id)) !== -1) {
+						result.items.splice(i, 1);
+					}
+				}
+			}
+	
+			return result;
+		},
+	
+		/**
+		 * Refreshes the list of available options shown
+		 * in the autocomplete dropdown menu.
+		 *
+		 * @param {boolean} triggerDropdown
+		 */
+		refreshOptions: function(triggerDropdown) {
+			var i, j, k, n, groups, groups_order, option, option_html, optgroup, optgroups, html, html_children, has_create_option;
+			var $active, $active_before, $create;
+	
+			if (typeof triggerDropdown === 'undefined') {
+				triggerDropdown = true;
+			}
+	
+			var self              = this;
+			var query             = $.trim(self.$control_input.val());
+			var results           = self.search(query);
+			var $dropdown_content = self.$dropdown_content;
+			var active_before     = self.$activeOption && hash_key(self.$activeOption.attr('data-value'));
+	
+			// build markup
+			n = results.items.length;
+			if (typeof self.settings.maxOptions === 'number') {
+				n = Math.min(n, self.settings.maxOptions);
+			}
+	
+			// render and group available options individually
+			groups = {};
+			groups_order = [];
+	
+			for (i = 0; i < n; i++) {
+				option      = self.options[results.items[i].id];
+				option_html = self.render('option', option);
+				optgroup    = option[self.settings.optgroupField] || '';
+				optgroups   = $.isArray(optgroup) ? optgroup : [optgroup];
+	
+				for (j = 0, k = optgroups && optgroups.length; j < k; j++) {
+					optgroup = optgroups[j];
+					if (!self.optgroups.hasOwnProperty(optgroup)) {
+						optgroup = '';
+					}
+					if (!groups.hasOwnProperty(optgroup)) {
+						groups[optgroup] = [];
+						groups_order.push(optgroup);
+					}
+					groups[optgroup].push(option_html);
+				}
+			}
+	
+			// sort optgroups
+			if (this.settings.lockOptgroupOrder) {
+				groups_order.sort(function(a, b) {
+					var a_order = self.optgroups[a].$order || 0;
+					var b_order = self.optgroups[b].$order || 0;
+					return a_order - b_order;
+				});
+			}
+	
+			// render optgroup headers & join groups
+			html = [];
+			for (i = 0, n = groups_order.length; i < n; i++) {
+				optgroup = groups_order[i];
+				if (self.optgroups.hasOwnProperty(optgroup) && groups[optgroup].length) {
+					// render the optgroup header and options within it,
+					// then pass it to the wrapper template
+					html_children = self.render('optgroup_header', self.optgroups[optgroup]) || '';
+					html_children += groups[optgroup].join('');
+					html.push(self.render('optgroup', $.extend({}, self.optgroups[optgroup], {
+						html: html_children
+					})));
+				} else {
+					html.push(groups[optgroup].join(''));
+				}
+			}
+	
+			$dropdown_content.html(html.join(''));
+	
+			// highlight matching terms inline
+			if (self.settings.highlight && results.query.length && results.tokens.length) {
+				for (i = 0, n = results.tokens.length; i < n; i++) {
+					highlight($dropdown_content, results.tokens[i].regex);
+				}
+			}
+	
+			// add "selected" class to selected options
+			if (!self.settings.hideSelected) {
+				for (i = 0, n = self.items.length; i < n; i++) {
+					self.getOption(self.items[i]).addClass('selected');
+				}
+			}
+	
+			// add create option
+			has_create_option = self.canCreate(query);
+			if (has_create_option) {
+				$dropdown_content.prepend(self.render('option_create', {input: query}));
+				$create = $($dropdown_content[0].childNodes[0]);
+			}
+	
+			// activate
+			self.hasOptions = results.items.length > 0 || has_create_option;
+			if (self.hasOptions) {
+				if (results.items.length > 0) {
+					$active_before = active_before && self.getOption(active_before);
+					if ($active_before && $active_before.length) {
+						$active = $active_before;
+					} else if (self.settings.mode === 'single' && self.items.length) {
+						$active = self.getOption(self.items[0]);
+					}
+					if (!$active || !$active.length) {
+						if ($create && !self.settings.addPrecedence) {
+							$active = self.getAdjacentOption($create, 1);
+						} else {
+							$active = $dropdown_content.find('[data-selectable]:first');
+						}
+					}
+				} else {
+					$active = $create;
+				}
+				self.setActiveOption($active);
+				if (triggerDropdown && !self.isOpen) { self.open(); }
+			} else {
+				self.setActiveOption(null);
+				if (triggerDropdown && self.isOpen) { self.close(); }
+			}
+		},
+	
+		/**
+		 * Adds an available option. If it already exists,
+		 * nothing will happen. Note: this does not refresh
+		 * the options list dropdown (use `refreshOptions`
+		 * for that).
+		 *
+		 * Usage:
+		 *
+		 *   this.addOption(data)
+		 *
+		 * @param {object|array} data
+		 */
+		addOption: function(data) {
+			var i, n, value, self = this;
+	
+			if ($.isArray(data)) {
+				for (i = 0, n = data.length; i < n; i++) {
+					self.addOption(data[i]);
+				}
+				return;
+			}
+	
+			if (value = self.registerOption(data)) {
+				self.userOptions[value] = true;
+				self.lastQuery = null;
+				self.trigger('option_add', value, data);
+			}
+		},
+	
+		/**
+		 * Registers an option to the pool of options.
+		 *
+		 * @param {object} data
+		 * @return {boolean|string}
+		 */
+		registerOption: function(data) {
+			var key = hash_key(data[this.settings.valueField]);
+			if (!key || this.options.hasOwnProperty(key)) return false;
+			data.$order = data.$order || ++this.order;
+			this.options[key] = data;
+			return key;
+		},
+	
+		/**
+		 * Registers an option group to the pool of option groups.
+		 *
+		 * @param {object} data
+		 * @return {boolean|string}
+		 */
+		registerOptionGroup: function(data) {
+			var key = hash_key(data[this.settings.optgroupValueField]);
+			if (!key) return false;
+	
+			data.$order = data.$order || ++this.order;
+			this.optgroups[key] = data;
+			return key;
+		},
+	
+		/**
+		 * Registers a new optgroup for options
+		 * to be bucketed into.
+		 *
+		 * @param {string} id
+		 * @param {object} data
+		 */
+		addOptionGroup: function(id, data) {
+			data[this.settings.optgroupValueField] = id;
+			if (id = this.registerOptionGroup(data)) {
+				this.trigger('optgroup_add', id, data);
+			}
+		},
+	
+		/**
+		 * Removes an existing option group.
+		 *
+		 * @param {string} id
+		 */
+		removeOptionGroup: function(id) {
+			if (this.optgroups.hasOwnProperty(id)) {
+				delete this.optgroups[id];
+				this.renderCache = {};
+				this.trigger('optgroup_remove', id);
+			}
+		},
+	
+		/**
+		 * Clears all existing option groups.
+		 */
+		clearOptionGroups: function() {
+			this.optgroups = {};
+			this.renderCache = {};
+			this.trigger('optgroup_clear');
+		},
+	
+		/**
+		 * Updates an option available for selection. If
+		 * it is visible in the selected items or options
+		 * dropdown, it will be re-rendered automatically.
+		 *
+		 * @param {string} value
+		 * @param {object} data
+		 */
+		updateOption: function(value, data) {
+			var self = this;
+			var $item, $item_new;
+			var value_new, index_item, cache_items, cache_options, order_old;
+	
+			value     = hash_key(value);
+			value_new = hash_key(data[self.settings.valueField]);
+	
+			// sanity checks
+			if (value === null) return;
+			if (!self.options.hasOwnProperty(value)) return;
+			if (typeof value_new !== 'string') throw new Error('Value must be set in option data');
+	
+			order_old = self.options[value].$order;
+	
+			// update references
+			if (value_new !== value) {
+				delete self.options[value];
+				index_item = self.items.indexOf(value);
+				if (index_item !== -1) {
+					self.items.splice(index_item, 1, value_new);
+				}
+			}
+			data.$order = data.$order || order_old;
+			self.options[value_new] = data;
+	
+			// invalidate render cache
+			cache_items = self.renderCache['item'];
+			cache_options = self.renderCache['option'];
+	
+			if (cache_items) {
+				delete cache_items[value];
+				delete cache_items[value_new];
+			}
+			if (cache_options) {
+				delete cache_options[value];
+				delete cache_options[value_new];
+			}
+	
+			// update the item if it's selected
+			if (self.items.indexOf(value_new) !== -1) {
+				$item = self.getItem(value);
+				$item_new = $(self.render('item', data));
+				if ($item.hasClass('active')) $item_new.addClass('active');
+				$item.replaceWith($item_new);
+			}
+	
+			// invalidate last query because we might have updated the sortField
+			self.lastQuery = null;
+	
+			// update dropdown contents
+			if (self.isOpen) {
+				self.refreshOptions(false);
+			}
+		},
+	
+		/**
+		 * Removes a single option.
+		 *
+		 * @param {string} value
+		 * @param {boolean} silent
+		 */
+		removeOption: function(value, silent) {
+			var self = this;
+			value = hash_key(value);
+	
+			var cache_items = self.renderCache['item'];
+			var cache_options = self.renderCache['option'];
+			if (cache_items) delete cache_items[value];
+			if (cache_options) delete cache_options[value];
+	
+			delete self.userOptions[value];
+			delete self.options[value];
+			self.lastQuery = null;
+			self.trigger('option_remove', value);
+			self.removeItem(value, silent);
+		},
+	
+		/**
+		 * Clears all options.
+		 */
+		clearOptions: function() {
+			var self = this;
+	
+			self.loadedSearches = {};
+			self.userOptions = {};
+			self.renderCache = {};
+			self.options = self.sifter.items = {};
+			self.lastQuery = null;
+			self.trigger('option_clear');
+			self.clear();
+		},
+	
+		/**
+		 * Returns the jQuery element of the option
+		 * matching the given value.
+		 *
+		 * @param {string} value
+		 * @returns {object}
+		 */
+		getOption: function(value) {
+			return this.getElementWithValue(value, this.$dropdown_content.find('[data-selectable]'));
+		},
+	
+		/**
+		 * Returns the jQuery element of the next or
+		 * previous selectable option.
+		 *
+		 * @param {object} $option
+		 * @param {int} direction  can be 1 for next or -1 for previous
+		 * @return {object}
+		 */
+		getAdjacentOption: function($option, direction) {
+			var $options = this.$dropdown.find('[data-selectable]');
+			var index    = $options.index($option) + direction;
+	
+			return index >= 0 && index < $options.length ? $options.eq(index) : $();
+		},
+	
+		/**
+		 * Finds the first element with a "data-value" attribute
+		 * that matches the given value.
+		 *
+		 * @param {mixed} value
+		 * @param {object} $els
+		 * @return {object}
+		 */
+		getElementWithValue: function(value, $els) {
+			value = hash_key(value);
+	
+			if (typeof value !== 'undefined' && value !== null) {
+				for (var i = 0, n = $els.length; i < n; i++) {
+					if ($els[i].getAttribute('data-value') === value) {
+						return $($els[i]);
+					}
+				}
+			}
+	
+			return $();
+		},
+	
+		/**
+		 * Returns the jQuery element of the item
+		 * matching the given value.
+		 *
+		 * @param {string} value
+		 * @returns {object}
+		 */
+		getItem: function(value) {
+			return this.getElementWithValue(value, this.$control.children());
+		},
+	
+		/**
+		 * "Selects" multiple items at once. Adds them to the list
+		 * at the current caret position.
+		 *
+		 * @param {string} value
+		 * @param {boolean} silent
+		 */
+		addItems: function(values, silent) {
+			var items = $.isArray(values) ? values : [values];
+			for (var i = 0, n = items.length; i < n; i++) {
+				this.isPending = (i < n - 1);
+				this.addItem(items[i], silent);
+			}
+		},
+	
+		/**
+		 * "Selects" an item. Adds it to the list
+		 * at the current caret position.
+		 *
+		 * @param {string} value
+		 * @param {boolean} silent
+		 */
+		addItem: function(value, silent) {
+			var events = silent ? [] : ['change'];
+	
+			debounce_events(this, events, function() {
+				var $item, $option, $options;
+				var self = this;
+				var inputMode = self.settings.mode;
+				var i, active, value_next, wasFull;
+				value = hash_key(value);
+	
+				if (self.items.indexOf(value) !== -1) {
+					if (inputMode === 'single') self.close();
+					return;
+				}
+	
+				if (!self.options.hasOwnProperty(value)) return;
+				if (inputMode === 'single') self.clear(silent);
+				if (inputMode === 'multi' && self.isFull()) return;
+	
+				$item = $(self.render('item', self.options[value]));
+				wasFull = self.isFull();
+				self.items.splice(self.caretPos, 0, value);
+				self.insertAtCaret($item);
+				if (!self.isPending || (!wasFull && self.isFull())) {
+					self.refreshState();
+				}
+	
+				if (self.isSetup) {
+					$options = self.$dropdown_content.find('[data-selectable]');
+	
+					// update menu / remove the option (if this is not one item being added as part of series)
+					if (!self.isPending) {
+						$option = self.getOption(value);
+						value_next = self.getAdjacentOption($option, 1).attr('data-value');
+						self.refreshOptions(self.isFocused && inputMode !== 'single');
+						if (value_next) {
+							self.setActiveOption(self.getOption(value_next));
+						}
+					}
+	
+					// hide the menu if the maximum number of items have been selected or no options are left
+					if (!$options.length || self.isFull()) {
+						self.close();
+					} else {
+						self.positionDropdown();
+					}
+	
+					self.updatePlaceholder();
+					self.trigger('item_add', value, $item);
+					self.updateOriginalInput({silent: silent});
+				}
+			});
+		},
+	
+		/**
+		 * Removes the selected item matching
+		 * the provided value.
+		 *
+		 * @param {string} value
+		 */
+		removeItem: function(value, silent) {
+			var self = this;
+			var $item, i, idx;
+	
+			$item = (typeof value === 'object') ? value : self.getItem(value);
+			value = hash_key($item.attr('data-value'));
+			i = self.items.indexOf(value);
+	
+			if (i !== -1) {
+				$item.remove();
+				if ($item.hasClass('active')) {
+					idx = self.$activeItems.indexOf($item[0]);
+					self.$activeItems.splice(idx, 1);
+				}
+	
+				self.items.splice(i, 1);
+				self.lastQuery = null;
+				if (!self.settings.persist && self.userOptions.hasOwnProperty(value)) {
+					self.removeOption(value, silent);
+				}
+	
+				if (i < self.caretPos) {
+					self.setCaret(self.caretPos - 1);
+				}
+	
+				self.refreshState();
+				self.updatePlaceholder();
+				self.updateOriginalInput({silent: silent});
+				self.positionDropdown();
+				self.trigger('item_remove', value, $item);
+			}
+		},
+	
+		/**
+		 * Invokes the `create` method provided in the
+		 * selectize options that should provide the data
+		 * for the new item, given the user input.
+		 *
+		 * Once this completes, it will be added
+		 * to the item list.
+		 *
+		 * @param {string} value
+		 * @param {boolean} [triggerDropdown]
+		 * @param {function} [callback]
+		 * @return {boolean}
+		 */
+		createItem: function(input, triggerDropdown) {
+			var self  = this;
+			var caret = self.caretPos;
+			input = input || $.trim(self.$control_input.val() || '');
+	
+			var callback = arguments[arguments.length - 1];
+			if (typeof callback !== 'function') callback = function() {};
+	
+			if (typeof triggerDropdown !== 'boolean') {
+				triggerDropdown = true;
+			}
+	
+			if (!self.canCreate(input)) {
+				callback();
+				return false;
+			}
+	
+			self.lock();
+	
+			var setup = (typeof self.settings.create === 'function') ? this.settings.create : function(input) {
+				var data = {};
+				data[self.settings.labelField] = input;
+				data[self.settings.valueField] = input;
+				return data;
+			};
+	
+			var create = once(function(data) {
+				self.unlock();
+	
+				if (!data || typeof data !== 'object') return callback();
+				var value = hash_key(data[self.settings.valueField]);
+				if (typeof value !== 'string') return callback();
+	
+				self.setTextboxValue('');
+				self.addOption(data);
+				self.setCaret(caret);
+				self.addItem(value);
+				self.refreshOptions(triggerDropdown && self.settings.mode !== 'single');
+				callback(data);
+			});
+	
+			var output = setup.apply(this, [input, create]);
+			if (typeof output !== 'undefined') {
+				create(output);
+			}
+	
+			return true;
+		},
+	
+		/**
+		 * Re-renders the selected item lists.
+		 */
+		refreshItems: function() {
+			this.lastQuery = null;
+	
+			if (this.isSetup) {
+				this.addItem(this.items);
+			}
+	
+			this.refreshState();
+			this.updateOriginalInput();
+		},
+	
+		/**
+		 * Updates all state-dependent attributes
+		 * and CSS classes.
+		 */
+		refreshState: function() {
+			var invalid, self = this;
+			if (self.isRequired) {
+				if (self.items.length) self.isInvalid = false;
+				self.$control_input.prop('required', invalid);
+			}
+			self.refreshClasses();
+		},
+	
+		/**
+		 * Updates all state-dependent CSS classes.
+		 */
+		refreshClasses: function() {
+			var self     = this;
+			var isFull   = self.isFull();
+			var isLocked = self.isLocked;
+	
+			self.$wrapper
+				.toggleClass('rtl', self.rtl);
+	
+			self.$control
+				.toggleClass('focus', self.isFocused)
+				.toggleClass('disabled', self.isDisabled)
+				.toggleClass('required', self.isRequired)
+				.toggleClass('invalid', self.isInvalid)
+				.toggleClass('locked', isLocked)
+				.toggleClass('full', isFull).toggleClass('not-full', !isFull)
+				.toggleClass('input-active', self.isFocused && !self.isInputHidden)
+				.toggleClass('dropdown-active', self.isOpen)
+				.toggleClass('has-options', !$.isEmptyObject(self.options))
+				.toggleClass('has-items', self.items.length > 0);
+	
+			self.$control_input.data('grow', !isFull && !isLocked);
+		},
+	
+		/**
+		 * Determines whether or not more items can be added
+		 * to the control without exceeding the user-defined maximum.
+		 *
+		 * @returns {boolean}
+		 */
+		isFull: function() {
+			return this.settings.maxItems !== null && this.items.length >= this.settings.maxItems;
+		},
+	
+		/**
+		 * Refreshes the original <select> or <input>
+		 * element to reflect the current state.
+		 */
+		updateOriginalInput: function(opts) {
+			var i, n, options, label, self = this;
+			opts = opts || {};
+	
+			if (self.tagType === TAG_SELECT) {
+				options = [];
+				for (i = 0, n = self.items.length; i < n; i++) {
+					label = self.options[self.items[i]][self.settings.labelField] || '';
+					options.push('<option value="' + escape_html(self.items[i]) + '" selected="selected">' + escape_html(label) + '</option>');
+				}
+				if (!options.length && !this.$input.attr('multiple')) {
+					options.push('<option value="" selected="selected"></option>');
+				}
+				self.$input.html(options.join(''));
+			} else {
+				self.$input.val(self.getValue());
+				self.$input.attr('value',self.$input.val());
+			}
+	
+			if (self.isSetup) {
+				if (!opts.silent) {
+					self.trigger('change', self.$input.val());
+				}
+			}
+		},
+	
+		/**
+		 * Shows/hide the input placeholder depending
+		 * on if there items in the list already.
+		 */
+		updatePlaceholder: function() {
+			if (!this.settings.placeholder) return;
+			var $input = this.$control_input;
+	
+			if (this.items.length) {
+				$input.removeAttr('placeholder');
+			} else {
+				$input.attr('placeholder', this.settings.placeholder);
+			}
+			$input.triggerHandler('update', {force: true});
+		},
+	
+		/**
+		 * Shows the autocomplete dropdown containing
+		 * the available options.
+		 */
+		open: function() {
+			var self = this;
+	
+			if (self.isLocked || self.isOpen || (self.settings.mode === 'multi' && self.isFull())) return;
+			self.focus();
+			self.isOpen = true;
+			self.refreshState();
+			self.$dropdown.css({visibility: 'hidden', display: 'block'});
+			self.positionDropdown();
+			self.$dropdown.css({visibility: 'visible'});
+			self.trigger('dropdown_open', self.$dropdown);
+		},
+	
+		/**
+		 * Closes the autocomplete dropdown menu.
+		 */
+		close: function() {
+			var self = this;
+			var trigger = self.isOpen;
+	
+			if (self.settings.mode === 'single' && self.items.length) {
+				self.hideInput();
+			}
+	
+			self.isOpen = false;
+			self.$dropdown.hide();
+			self.setActiveOption(null);
+			self.refreshState();
+	
+			if (trigger) self.trigger('dropdown_close', self.$dropdown);
+		},
+	
+		/**
+		 * Calculates and applies the appropriate
+		 * position of the dropdown.
+		 */
+		positionDropdown: function() {
+			var $control = this.$control;
+			var offset = this.settings.dropdownParent === 'body' ? $control.offset() : $control.position();
+			offset.top += $control.outerHeight(true);
+	
+			this.$dropdown.css({
+				width : $control.outerWidth(),
+				top   : offset.top,
+				left  : offset.left
+			});
+		},
+	
+		/**
+		 * Resets / clears all selected items
+		 * from the control.
+		 *
+		 * @param {boolean} silent
+		 */
+		clear: function(silent) {
+			var self = this;
+	
+			if (!self.items.length) return;
+			self.$control.children(':not(input)').remove();
+			self.items = [];
+			self.lastQuery = null;
+			self.setCaret(0);
+			self.setActiveItem(null);
+			self.updatePlaceholder();
+			self.updateOriginalInput({silent: silent});
+			self.refreshState();
+			self.showInput();
+			self.trigger('clear');
+		},
+	
+		/**
+		 * A helper method for inserting an element
+		 * at the current caret position.
+		 *
+		 * @param {object} $el
+		 */
+		insertAtCaret: function($el) {
+			var caret = Math.min(this.caretPos, this.items.length);
+			if (caret === 0) {
+				this.$control.prepend($el);
+			} else {
+				$(this.$control[0].childNodes[caret]).before($el);
+			}
+			this.setCaret(caret + 1);
+		},
+	
+		/**
+		 * Removes the current selected item(s).
+		 *
+		 * @param {object} e (optional)
+		 * @returns {boolean}
+		 */
+		deleteSelection: function(e) {
+			var i, n, direction, selection, values, caret, option_select, $option_select, $tail;
+			var self = this;
+	
+			direction = (e && e.keyCode === KEY_BACKSPACE) ? -1 : 1;
+			selection = getSelection(self.$control_input[0]);
+	
+			if (self.$activeOption && !self.settings.hideSelected) {
+				option_select = self.getAdjacentOption(self.$activeOption, -1).attr('data-value');
+			}
+	
+			// determine items that will be removed
+			values = [];
+	
+			if (self.$activeItems.length) {
+				$tail = self.$control.children('.active:' + (direction > 0 ? 'last' : 'first'));
+				caret = self.$control.children(':not(input)').index($tail);
+				if (direction > 0) { caret++; }
+	
+				for (i = 0, n = self.$activeItems.length; i < n; i++) {
+					values.push($(self.$activeItems[i]).attr('data-value'));
+				}
+				if (e) {
+					e.preventDefault();
+					e.stopPropagation();
+				}
+			} else if ((self.isFocused || self.settings.mode === 'single') && self.items.length) {
+				if (direction < 0 && selection.start === 0 && selection.length === 0) {
+					values.push(self.items[self.caretPos - 1]);
+				} else if (direction > 0 && selection.start === self.$control_input.val().length) {
+					values.push(self.items[self.caretPos]);
+				}
+			}
+	
+			// allow the callback to abort
+			if (!values.length || (typeof self.settings.onDelete === 'function' && self.settings.onDelete.apply(self, [values]) === false)) {
+				return false;
+			}
+	
+			// perform removal
+			if (typeof caret !== 'undefined') {
+				self.setCaret(caret);
+			}
+			while (values.length) {
+				self.removeItem(values.pop());
+			}
+	
+			self.showInput();
+			self.positionDropdown();
+			self.refreshOptions(true);
+	
+			// select previous option
+			if (option_select) {
+				$option_select = self.getOption(option_select);
+				if ($option_select.length) {
+					self.setActiveOption($option_select);
+				}
+			}
+	
+			return true;
+		},
+	
+		/**
+		 * Selects the previous / next item (depending
+		 * on the `direction` argument).
+		 *
+		 * > 0 - right
+		 * < 0 - left
+		 *
+		 * @param {int} direction
+		 * @param {object} e (optional)
+		 */
+		advanceSelection: function(direction, e) {
+			var tail, selection, idx, valueLength, cursorAtEdge, $tail;
+			var self = this;
+	
+			if (direction === 0) return;
+			if (self.rtl) direction *= -1;
+	
+			tail = direction > 0 ? 'last' : 'first';
+			selection = getSelection(self.$control_input[0]);
+	
+			if (self.isFocused && !self.isInputHidden) {
+				valueLength = self.$control_input.val().length;
+				cursorAtEdge = direction < 0
+					? selection.start === 0 && selection.length === 0
+					: selection.start === valueLength;
+	
+				if (cursorAtEdge && !valueLength) {
+					self.advanceCaret(direction, e);
+				}
+			} else {
+				$tail = self.$control.children('.active:' + tail);
+				if ($tail.length) {
+					idx = self.$control.children(':not(input)').index($tail);
+					self.setActiveItem(null);
+					self.setCaret(direction > 0 ? idx + 1 : idx);
+				}
+			}
+		},
+	
+		/**
+		 * Moves the caret left / right.
+		 *
+		 * @param {int} direction
+		 * @param {object} e (optional)
+		 */
+		advanceCaret: function(direction, e) {
+			var self = this, fn, $adj;
+	
+			if (direction === 0) return;
+	
+			fn = direction > 0 ? 'next' : 'prev';
+			if (self.isShiftDown) {
+				$adj = self.$control_input[fn]();
+				if ($adj.length) {
+					self.hideInput();
+					self.setActiveItem($adj);
+					e && e.preventDefault();
+				}
+			} else {
+				self.setCaret(self.caretPos + direction);
+			}
+		},
+	
+		/**
+		 * Moves the caret to the specified index.
+		 *
+		 * @param {int} i
+		 */
+		setCaret: function(i) {
+			var self = this;
+	
+			if (self.settings.mode === 'single') {
+				i = self.items.length;
+			} else {
+				i = Math.max(0, Math.min(self.items.length, i));
+			}
+	
+			if(!self.isPending) {
+				// the input must be moved by leaving it in place and moving the
+				// siblings, due to the fact that focus cannot be restored once lost
+				// on mobile webkit devices
+				var j, n, fn, $children, $child;
+				$children = self.$control.children(':not(input)');
+				for (j = 0, n = $children.length; j < n; j++) {
+					$child = $($children[j]).detach();
+					if (j <  i) {
+						self.$control_input.before($child);
+					} else {
+						self.$control.append($child);
+					}
+				}
+			}
+	
+			self.caretPos = i;
+		},
+	
+		/**
+		 * Disables user input on the control. Used while
+		 * items are being asynchronously created.
+		 */
+		lock: function() {
+			this.close();
+			this.isLocked = true;
+			this.refreshState();
+		},
+	
+		/**
+		 * Re-enables user input on the control.
+		 */
+		unlock: function() {
+			this.isLocked = false;
+			this.refreshState();
+		},
+	
+		/**
+		 * Disables user input on the control completely.
+		 * While disabled, it cannot receive focus.
+		 */
+		disable: function() {
+			var self = this;
+			self.$input.prop('disabled', true);
+			self.$control_input.prop('disabled', true).prop('tabindex', -1);
+			self.isDisabled = true;
+			self.lock();
+		},
+	
+		/**
+		 * Enables the control so that it can respond
+		 * to focus and user input.
+		 */
+		enable: function() {
+			var self = this;
+			self.$input.prop('disabled', false);
+			self.$control_input.prop('disabled', false).prop('tabindex', self.tabIndex);
+			self.isDisabled = false;
+			self.unlock();
+		},
+	
+		/**
+		 * Completely destroys the control and
+		 * unbinds all event listeners so that it can
+		 * be garbage collected.
+		 */
+		destroy: function() {
+			var self = this;
+			var eventNS = self.eventNS;
+			var revertSettings = self.revertSettings;
+	
+			self.trigger('destroy');
+			self.off();
+			self.$wrapper.remove();
+			self.$dropdown.remove();
+	
+			self.$input
+				.html('')
+				.append(revertSettings.$children)
+				.removeAttr('tabindex')
+				.removeClass('selectized')
+				.attr({tabindex: revertSettings.tabindex})
+				.show();
+	
+			self.$control_input.removeData('grow');
+			self.$input.removeData('selectize');
+	
+			$(window).off(eventNS);
+			$(document).off(eventNS);
+			$(document.body).off(eventNS);
+	
+			delete self.$input[0].selectize;
+		},
+	
+		/**
+		 * A helper method for rendering "item" and
+		 * "option" templates, given the data.
+		 *
+		 * @param {string} templateName
+		 * @param {object} data
+		 * @returns {string}
+		 */
+		render: function(templateName, data) {
+			var value, id, label;
+			var html = '';
+			var cache = false;
+			var self = this;
+			var regex_tag = /^[\t \r\n]*<([a-z][a-z0-9\-_]*(?:\:[a-z][a-z0-9\-_]*)?)/i;
+	
+			if (templateName === 'option' || templateName === 'item') {
+				value = hash_key(data[self.settings.valueField]);
+				cache = !!value;
+			}
+	
+			// pull markup from cache if it exists
+			if (cache) {
+				if (!isset(self.renderCache[templateName])) {
+					self.renderCache[templateName] = {};
+				}
+				if (self.renderCache[templateName].hasOwnProperty(value)) {
+					return self.renderCache[templateName][value];
+				}
+			}
+	
+			// render markup
+			html = self.settings.render[templateName].apply(this, [data, escape_html]);
+	
+			// add mandatory attributes
+			if (templateName === 'option' || templateName === 'option_create') {
+				html = html.replace(regex_tag, '<$1 data-selectable');
+			}
+			if (templateName === 'optgroup') {
+				id = data[self.settings.optgroupValueField] || '';
+				html = html.replace(regex_tag, '<$1 data-group="' + escape_replace(escape_html(id)) + '"');
+			}
+			if (templateName === 'option' || templateName === 'item') {
+				html = html.replace(regex_tag, '<$1 data-value="' + escape_replace(escape_html(value || '')) + '"');
+			}
+	
+			// update cache
+			if (cache) {
+				self.renderCache[templateName][value] = html;
+			}
+	
+			return html;
+		},
+	
+		/**
+		 * Clears the render cache for a template. If
+		 * no template is given, clears all render
+		 * caches.
+		 *
+		 * @param {string} templateName
+		 */
+		clearCache: function(templateName) {
+			var self = this;
+			if (typeof templateName === 'undefined') {
+				self.renderCache = {};
+			} else {
+				delete self.renderCache[templateName];
+			}
+		},
+	
+		/**
+		 * Determines whether or not to display the
+		 * create item prompt, given a user input.
+		 *
+		 * @param {string} input
+		 * @return {boolean}
+		 */
+		canCreate: function(input) {
+			var self = this;
+			if (!self.settings.create) return false;
+			var filter = self.settings.createFilter;
+			return input.length
+				&& (typeof filter !== 'function' || filter.apply(self, [input]))
+				&& (typeof filter !== 'string' || new RegExp(filter).test(input))
+				&& (!(filter instanceof RegExp) || filter.test(input));
+		}
+	
+	});
+	
+	
+	Selectize.count = 0;
+	Selectize.defaults = {
+		options: [],
+		optgroups: [],
+	
+		plugins: [],
+		delimiter: ',',
+		splitOn: null, // regexp or string for splitting up values from a paste command
+		persist: true,
+		diacritics: true,
+		create: false,
+		createOnBlur: false,
+		createFilter: null,
+		highlight: true,
+		openOnFocus: true,
+		maxOptions: 1000,
+		maxItems: null,
+		hideSelected: null,
+		addPrecedence: false,
+		selectOnTab: false,
+		preload: false,
+		allowEmptyOption: false,
+		closeAfterSelect: false,
+	
+		scrollDuration: 60,
+		loadThrottle: 300,
+		loadingClass: 'loading',
+	
+		dataAttr: 'data-data',
+		optgroupField: 'optgroup',
+		valueField: 'value',
+		labelField: 'text',
+		optgroupLabelField: 'label',
+		optgroupValueField: 'value',
+		lockOptgroupOrder: false,
+	
+		sortField: '$order',
+		searchField: ['text'],
+		searchConjunction: 'and',
+	
+		mode: null,
+		wrapperClass: 'selectize-control',
+		inputClass: 'selectize-input',
+		dropdownClass: 'selectize-dropdown',
+		dropdownContentClass: 'selectize-dropdown-content',
+	
+		dropdownParent: null,
+	
+		copyClassesToDropdown: true,
+	
+		/*
+		load                 : null, // function(query, callback) { ... }
+		score                : null, // function(search) { ... }
+		onInitialize         : null, // function() { ... }
+		onChange             : null, // function(value) { ... }
+		onItemAdd            : null, // function(value, $item) { ... }
+		onItemRemove         : null, // function(value) { ... }
+		onClear              : null, // function() { ... }
+		onOptionAdd          : null, // function(value, data) { ... }
+		onOptionRemove       : null, // function(value) { ... }
+		onOptionClear        : null, // function() { ... }
+		onOptionGroupAdd     : null, // function(id, data) { ... }
+		onOptionGroupRemove  : null, // function(id) { ... }
+		onOptionGroupClear   : null, // function() { ... }
+		onDropdownOpen       : null, // function($dropdown) { ... }
+		onDropdownClose      : null, // function($dropdown) { ... }
+		onType               : null, // function(str) { ... }
+		onDelete             : null, // function(values) { ... }
+		*/
+	
+		render: {
+			/*
+			item: null,
+			optgroup: null,
+			optgroup_header: null,
+			option: null,
+			option_create: null
+			*/
+		}
+	};
+	
+	
+	$.fn.selectize = function(settings_user) {
+		var defaults             = $.fn.selectize.defaults;
+		var settings             = $.extend({}, defaults, settings_user);
+		var attr_data            = settings.dataAttr;
+		var field_label          = settings.labelField;
+		var field_value          = settings.valueField;
+		var field_optgroup       = settings.optgroupField;
+		var field_optgroup_label = settings.optgroupLabelField;
+		var field_optgroup_value = settings.optgroupValueField;
+	
+		/**
+		 * Initializes selectize from a <input type="text"> element.
+		 *
+		 * @param {object} $input
+		 * @param {object} settings_element
+		 */
+		var init_textbox = function($input, settings_element) {
+			var i, n, values, option;
+	
+			var data_raw = $input.attr(attr_data);
+	
+			if (!data_raw) {
+				var value = $.trim($input.val() || '');
+				if (!settings.allowEmptyOption && !value.length) return;
+				values = value.split(settings.delimiter);
+				for (i = 0, n = values.length; i < n; i++) {
+					option = {};
+					option[field_label] = values[i];
+					option[field_value] = values[i];
+					settings_element.options.push(option);
+				}
+				settings_element.items = values;
+			} else {
+				settings_element.options = JSON.parse(data_raw);
+				for (i = 0, n = settings_element.options.length; i < n; i++) {
+					settings_element.items.push(settings_element.options[i][field_value]);
+				}
+			}
+		};
+	
+		/**
+		 * Initializes selectize from a <select> element.
+		 *
+		 * @param {object} $input
+		 * @param {object} settings_element
+		 */
+		var init_select = function($input, settings_element) {
+			var i, n, tagName, $children, order = 0;
+			var options = settings_element.options;
+			var optionsMap = {};
+	
+			var readData = function($el) {
+				var data = attr_data && $el.attr(attr_data);
+				if (typeof data === 'string' && data.length) {
+					return JSON.parse(data);
+				}
+				return null;
+			};
+	
+			var addOption = function($option, group) {
+				$option = $($option);
+	
+				var value = hash_key($option.attr('value'));
+				if (!value && !settings.allowEmptyOption) return;
+	
+				// if the option already exists, it's probably been
+				// duplicated in another optgroup. in this case, push
+				// the current group to the "optgroup" property on the
+				// existing option so that it's rendered in both places.
+				if (optionsMap.hasOwnProperty(value)) {
+					if (group) {
+						var arr = optionsMap[value][field_optgroup];
+						if (!arr) {
+							optionsMap[value][field_optgroup] = group;
+						} else if (!$.isArray(arr)) {
+							optionsMap[value][field_optgroup] = [arr, group];
+						} else {
+							arr.push(group);
+						}
+					}
+					return;
+				}
+	
+				var option             = readData($option) || {};
+				option[field_label]    = option[field_label] || $option.text();
+				option[field_value]    = option[field_value] || value;
+				option[field_optgroup] = option[field_optgroup] || group;
+	
+				optionsMap[value] = option;
+				options.push(option);
+	
+				if ($option.is(':selected')) {
+					settings_element.items.push(value);
+				}
+			};
+	
+			var addGroup = function($optgroup) {
+				var i, n, id, optgroup, $options;
+	
+				$optgroup = $($optgroup);
+				id = $optgroup.attr('label');
+	
+				if (id) {
+					optgroup = readData($optgroup) || {};
+					optgroup[field_optgroup_label] = id;
+					optgroup[field_optgroup_value] = id;
+					settings_element.optgroups.push(optgroup);
+				}
+	
+				$options = $('option', $optgroup);
+				for (i = 0, n = $options.length; i < n; i++) {
+					addOption($options[i], id);
+				}
+			};
+	
+			settings_element.maxItems = $input.attr('multiple') ? null : 1;
+	
+			$children = $input.children();
+			for (i = 0, n = $children.length; i < n; i++) {
+				tagName = $children[i].tagName.toLowerCase();
+				if (tagName === 'optgroup') {
+					addGroup($children[i]);
+				} else if (tagName === 'option') {
+					addOption($children[i]);
+				}
+			}
+		};
+	
+		return this.each(function() {
+			if (this.selectize) return;
+	
+			var instance;
+			var $input = $(this);
+			var tag_name = this.tagName.toLowerCase();
+			var placeholder = $input.attr('placeholder') || $input.attr('data-placeholder');
+			if (!placeholder && !settings.allowEmptyOption) {
+				placeholder = $input.children('option[value=""]').text();
+			}
+	
+			var settings_element = {
+				'placeholder' : placeholder,
+				'options'     : [],
+				'optgroups'   : [],
+				'items'       : []
+			};
+	
+			if (tag_name === 'select') {
+				init_select($input, settings_element);
+			} else {
+				init_textbox($input, settings_element);
+			}
+	
+			instance = new Selectize($input, $.extend(true, {}, defaults, settings_element, settings_user));
+		});
+	};
+	
+	$.fn.selectize.defaults = Selectize.defaults;
+	$.fn.selectize.support = {
+		validity: SUPPORTS_VALIDITY_API
+	};
+	
+	
+	Selectize.define('drag_drop', function(options) {
+		if (!$.fn.sortable) throw new Error('The "drag_drop" plugin requires jQuery UI "sortable".');
+		if (this.settings.mode !== 'multi') return;
+		var self = this;
+	
+		self.lock = (function() {
+			var original = self.lock;
+			return function() {
+				var sortable = self.$control.data('sortable');
+				if (sortable) sortable.disable();
+				return original.apply(self, arguments);
+			};
+		})();
+	
+		self.unlock = (function() {
+			var original = self.unlock;
+			return function() {
+				var sortable = self.$control.data('sortable');
+				if (sortable) sortable.enable();
+				return original.apply(self, arguments);
+			};
+		})();
+	
+		self.setup = (function() {
+			var original = self.setup;
+			return function() {
+				original.apply(this, arguments);
+	
+				var $control = self.$control.sortable({
+					items: '[data-value]',
+					forcePlaceholderSize: true,
+					disabled: self.isLocked,
+					start: function(e, ui) {
+						ui.placeholder.css('width', ui.helper.css('width'));
+						$control.css({overflow: 'visible'});
+					},
+					stop: function() {
+						$control.css({overflow: 'hidden'});
+						var active = self.$activeItems ? self.$activeItems.slice() : null;
+						var values = [];
+						$control.children('[data-value]').each(function() {
+							values.push($(this).attr('data-value'));
+						});
+						self.setValue(values);
+						self.setActiveItem(active);
+					}
+				});
+			};
+		})();
+	
+	});
+	
+	Selectize.define('dropdown_header', function(options) {
+		var self = this;
+	
+		options = $.extend({
+			title         : 'Untitled',
+			headerClass   : 'selectize-dropdown-header',
+			titleRowClass : 'selectize-dropdown-header-title',
+			labelClass    : 'selectize-dropdown-header-label',
+			closeClass    : 'selectize-dropdown-header-close',
+	
+			html: function(data) {
+				return (
+					'<div class="' + data.headerClass + '">' +
+						'<div class="' + data.titleRowClass + '">' +
+							'<span class="' + data.labelClass + '">' + data.title + '</span>' +
+							'<a href="javascript:void(0)" class="' + data.closeClass + '">&times;</a>' +
+						'</div>' +
+					'</div>'
+				);
+			}
+		}, options);
+	
+		self.setup = (function() {
+			var original = self.setup;
+			return function() {
+				original.apply(self, arguments);
+				self.$dropdown_header = $(options.html(options));
+				self.$dropdown.prepend(self.$dropdown_header);
+			};
+		})();
+	
+	});
+	
+	Selectize.define('optgroup_columns', function(options) {
+		var self = this;
+	
+		options = $.extend({
+			equalizeWidth  : true,
+			equalizeHeight : true
+		}, options);
+	
+		this.getAdjacentOption = function($option, direction) {
+			var $options = $option.closest('[data-group]').find('[data-selectable]');
+			var index    = $options.index($option) + direction;
+	
+			return index >= 0 && index < $options.length ? $options.eq(index) : $();
+		};
+	
+		this.onKeyDown = (function() {
+			var original = self.onKeyDown;
+			return function(e) {
+				var index, $option, $options, $optgroup;
+	
+				if (this.isOpen && (e.keyCode === KEY_LEFT || e.keyCode === KEY_RIGHT)) {
+					self.ignoreHover = true;
+					$optgroup = this.$activeOption.closest('[data-group]');
+					index = $optgroup.find('[data-selectable]').index(this.$activeOption);
+	
+					if(e.keyCode === KEY_LEFT) {
+						$optgroup = $optgroup.prev('[data-group]');
+					} else {
+						$optgroup = $optgroup.next('[data-group]');
+					}
+	
+					$options = $optgroup.find('[data-selectable]');
+					$option  = $options.eq(Math.min($options.length - 1, index));
+					if ($option.length) {
+						this.setActiveOption($option);
+					}
+					return;
+				}
+	
+				return original.apply(this, arguments);
+			};
+		})();
+	
+		var getScrollbarWidth = function() {
+			var div;
+			var width = getScrollbarWidth.width;
+			var doc = document;
+	
+			if (typeof width === 'undefined') {
+				div = doc.createElement('div');
+				div.innerHTML = '<div style="width:50px;height:50px;position:absolute;left:-50px;top:-50px;overflow:auto;"><div style="width:1px;height:100px;"></div></div>';
+				div = div.firstChild;
+				doc.body.appendChild(div);
+				width = getScrollbarWidth.width = div.offsetWidth - div.clientWidth;
+				doc.body.removeChild(div);
+			}
+			return width;
+		};
+	
+		var equalizeSizes = function() {
+			var i, n, height_max, width, width_last, width_parent, $optgroups;
+	
+			$optgroups = $('[data-group]', self.$dropdown_content);
+			n = $optgroups.length;
+			if (!n || !self.$dropdown_content.width()) return;
+	
+			if (options.equalizeHeight) {
+				height_max = 0;
+				for (i = 0; i < n; i++) {
+					height_max = Math.max(height_max, $optgroups.eq(i).height());
+				}
+				$optgroups.css({height: height_max});
+			}
+	
+			if (options.equalizeWidth) {
+				width_parent = self.$dropdown_content.innerWidth() - getScrollbarWidth();
+				width = Math.round(width_parent / n);
+				$optgroups.css({width: width});
+				if (n > 1) {
+					width_last = width_parent - width * (n - 1);
+					$optgroups.eq(n - 1).css({width: width_last});
+				}
+			}
+		};
+	
+		if (options.equalizeHeight || options.equalizeWidth) {
+			hook.after(this, 'positionDropdown', equalizeSizes);
+			hook.after(this, 'refreshOptions', equalizeSizes);
+		}
+	
+	
+	});
+	
+	Selectize.define('remove_button', function(options) {
+		if (this.settings.mode === 'single') return;
+	
+		options = $.extend({
+			label     : '&times;',
+			title     : 'Remove',
+			className : 'remove',
+			append    : true
+		}, options);
+	
+		var self = this;
+		var html = '<a href="javascript:void(0)" class="' + options.className + '" tabindex="-1" title="' + escape_html(options.title) + '">' + options.label + '</a>';
+	
+		/**
+		 * Appends an element as a child (with raw HTML).
+		 *
+		 * @param {string} html_container
+		 * @param {string} html_element
+		 * @return {string}
+		 */
+		var append = function(html_container, html_element) {
+			var pos = html_container.search(/(<\/[^>]+>\s*)$/);
+			return html_container.substring(0, pos) + html_element + html_container.substring(pos);
+		};
+	
+		this.setup = (function() {
+			var original = self.setup;
+			return function() {
+				// override the item rendering method to add the button to each
+				if (options.append) {
+					var render_item = self.settings.render.item;
+					self.settings.render.item = function(data) {
+						return append(render_item.apply(this, arguments), html);
+					};
+				}
+	
+				original.apply(this, arguments);
+	
+				// add event listener
+				this.$control.on('click', '.' + options.className, function(e) {
+					e.preventDefault();
+					if (self.isLocked) return;
+	
+					var $item = $(e.currentTarget).parent();
+					self.setActiveItem($item);
+					if (self.deleteSelection()) {
+						self.setCaret(self.items.length);
+					}
+				});
+	
+			};
+		})();
+	
+	});
+	
+	Selectize.define('restore_on_backspace', function(options) {
+		var self = this;
+	
+		options.text = options.text || function(option) {
+			return option[this.settings.labelField];
+		};
+	
+		this.onKeyDown = (function() {
+			var original = self.onKeyDown;
+			return function(e) {
+				var index, option;
+				if (e.keyCode === KEY_BACKSPACE && this.$control_input.val() === '' && !this.$activeItems.length) {
+					index = this.caretPos - 1;
+					if (index >= 0 && index < this.items.length) {
+						option = this.options[this.items[index]];
+						if (this.deleteSelection(e)) {
+							this.setTextboxValue(options.text.apply(this, [option]));
+							this.refreshOptions(true);
+						}
+						e.preventDefault();
+						return;
+					}
+				}
+				return original.apply(this, arguments);
+			};
+		})();
+	});
+	
+
+	return Selectize;
+}));
+},{"jquery":47,"microplugin":49,"sifter":296}],296:[function(require,module,exports){
+/**
+ * sifter.js
+ * Copyright (c) 2013 Brian Reavis & contributors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this
+ * file except in compliance with the License. You may obtain a copy of the License at:
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+ * ANY KIND, either express or implied. See the License for the specific language
+ * governing permissions and limitations under the License.
+ *
+ * @author Brian Reavis <brian@thirdroute.com>
+ */
+
+(function(root, factory) {
+	if (typeof define === 'function' && define.amd) {
+		define(factory);
+	} else if (typeof exports === 'object') {
+		module.exports = factory();
+	} else {
+		root.Sifter = factory();
+	}
+}(this, function() {
+
+	/**
+	 * Textually searches arrays and hashes of objects
+	 * by property (or multiple properties). Designed
+	 * specifically for autocomplete.
+	 *
+	 * @constructor
+	 * @param {array|object} items
+	 * @param {object} items
+	 */
+	var Sifter = function(items, settings) {
+		this.items = items;
+		this.settings = settings || {diacritics: true};
+	};
+
+	/**
+	 * Splits a search string into an array of individual
+	 * regexps to be used to match results.
+	 *
+	 * @param {string} query
+	 * @returns {array}
+	 */
+	Sifter.prototype.tokenize = function(query) {
+		query = trim(String(query || '').toLowerCase());
+		if (!query || !query.length) return [];
+
+		var i, n, regex, letter;
+		var tokens = [];
+		var words = query.split(/ +/);
+
+		for (i = 0, n = words.length; i < n; i++) {
+			regex = escape_regex(words[i]);
+			if (this.settings.diacritics) {
+				for (letter in DIACRITICS) {
+					if (DIACRITICS.hasOwnProperty(letter)) {
+						regex = regex.replace(new RegExp(letter, 'g'), DIACRITICS[letter]);
+					}
+				}
+			}
+			tokens.push({
+				string : words[i],
+				regex  : new RegExp(regex, 'i')
+			});
+		}
+
+		return tokens;
+	};
+
+	/**
+	 * Iterates over arrays and hashes.
+	 *
+	 * ```
+	 * this.iterator(this.items, function(item, id) {
+	 *    // invoked for each item
+	 * });
+	 * ```
+	 *
+	 * @param {array|object} object
+	 */
+	Sifter.prototype.iterator = function(object, callback) {
+		var iterator;
+		if (is_array(object)) {
+			iterator = Array.prototype.forEach || function(callback) {
+				for (var i = 0, n = this.length; i < n; i++) {
+					callback(this[i], i, this);
+				}
+			};
+		} else {
+			iterator = function(callback) {
+				for (var key in this) {
+					if (this.hasOwnProperty(key)) {
+						callback(this[key], key, this);
+					}
+				}
+			};
+		}
+
+		iterator.apply(object, [callback]);
+	};
+
+	/**
+	 * Returns a function to be used to score individual results.
+	 *
+	 * Good matches will have a higher score than poor matches.
+	 * If an item is not a match, 0 will be returned by the function.
+	 *
+	 * @param {object|string} search
+	 * @param {object} options (optional)
+	 * @returns {function}
+	 */
+	Sifter.prototype.getScoreFunction = function(search, options) {
+		var self, fields, tokens, token_count;
+
+		self        = this;
+		search      = self.prepareSearch(search, options);
+		tokens      = search.tokens;
+		fields      = search.options.fields;
+		token_count = tokens.length;
+
+		/**
+		 * Calculates how close of a match the
+		 * given value is against a search token.
+		 *
+		 * @param {mixed} value
+		 * @param {object} token
+		 * @return {number}
+		 */
+		var scoreValue = function(value, token) {
+			var score, pos;
+
+			if (!value) return 0;
+			value = String(value || '');
+			pos = value.search(token.regex);
+			if (pos === -1) return 0;
+			score = token.string.length / value.length;
+			if (pos === 0) score += 0.5;
+			return score;
+		};
+
+		/**
+		 * Calculates the score of an object
+		 * against the search query.
+		 *
+		 * @param {object} token
+		 * @param {object} data
+		 * @return {number}
+		 */
+		var scoreObject = (function() {
+			var field_count = fields.length;
+			if (!field_count) {
+				return function() { return 0; };
+			}
+			if (field_count === 1) {
+				return function(token, data) {
+					return scoreValue(data[fields[0]], token);
+				};
+			}
+			return function(token, data) {
+				for (var i = 0, sum = 0; i < field_count; i++) {
+					sum += scoreValue(data[fields[i]], token);
+				}
+				return sum / field_count;
+			};
+		})();
+
+		if (!token_count) {
+			return function() { return 0; };
+		}
+		if (token_count === 1) {
+			return function(data) {
+				return scoreObject(tokens[0], data);
+			};
+		}
+
+		if (search.options.conjunction === 'and') {
+			return function(data) {
+				var score;
+				for (var i = 0, sum = 0; i < token_count; i++) {
+					score = scoreObject(tokens[i], data);
+					if (score <= 0) return 0;
+					sum += score;
+				}
+				return sum / token_count;
+			};
+		} else {
+			return function(data) {
+				for (var i = 0, sum = 0; i < token_count; i++) {
+					sum += scoreObject(tokens[i], data);
+				}
+				return sum / token_count;
+			};
+		}
+	};
+
+	/**
+	 * Returns a function that can be used to compare two
+	 * results, for sorting purposes. If no sorting should
+	 * be performed, `null` will be returned.
+	 *
+	 * @param {string|object} search
+	 * @param {object} options
+	 * @return function(a,b)
+	 */
+	Sifter.prototype.getSortFunction = function(search, options) {
+		var i, n, self, field, fields, fields_count, multiplier, multipliers, get_field, implicit_score, sort;
+
+		self   = this;
+		search = self.prepareSearch(search, options);
+		sort   = (!search.query && options.sort_empty) || options.sort;
+
+		/**
+		 * Fetches the specified sort field value
+		 * from a search result item.
+		 *
+		 * @param  {string} name
+		 * @param  {object} result
+		 * @return {mixed}
+		 */
+		get_field = function(name, result) {
+			if (name === '$score') return result.score;
+			return self.items[result.id][name];
+		};
+
+		// parse options
+		fields = [];
+		if (sort) {
+			for (i = 0, n = sort.length; i < n; i++) {
+				if (search.query || sort[i].field !== '$score') {
+					fields.push(sort[i]);
+				}
+			}
+		}
+
+		// the "$score" field is implied to be the primary
+		// sort field, unless it's manually specified
+		if (search.query) {
+			implicit_score = true;
+			for (i = 0, n = fields.length; i < n; i++) {
+				if (fields[i].field === '$score') {
+					implicit_score = false;
+					break;
+				}
+			}
+			if (implicit_score) {
+				fields.unshift({field: '$score', direction: 'desc'});
+			}
+		} else {
+			for (i = 0, n = fields.length; i < n; i++) {
+				if (fields[i].field === '$score') {
+					fields.splice(i, 1);
+					break;
+				}
+			}
+		}
+
+		multipliers = [];
+		for (i = 0, n = fields.length; i < n; i++) {
+			multipliers.push(fields[i].direction === 'desc' ? -1 : 1);
+		}
+
+		// build function
+		fields_count = fields.length;
+		if (!fields_count) {
+			return null;
+		} else if (fields_count === 1) {
+			field = fields[0].field;
+			multiplier = multipliers[0];
+			return function(a, b) {
+				return multiplier * cmp(
+					get_field(field, a),
+					get_field(field, b)
+				);
+			};
+		} else {
+			return function(a, b) {
+				var i, result, a_value, b_value, field;
+				for (i = 0; i < fields_count; i++) {
+					field = fields[i].field;
+					result = multipliers[i] * cmp(
+						get_field(field, a),
+						get_field(field, b)
+					);
+					if (result) return result;
+				}
+				return 0;
+			};
+		}
+	};
+
+	/**
+	 * Parses a search query and returns an object
+	 * with tokens and fields ready to be populated
+	 * with results.
+	 *
+	 * @param {string} query
+	 * @param {object} options
+	 * @returns {object}
+	 */
+	Sifter.prototype.prepareSearch = function(query, options) {
+		if (typeof query === 'object') return query;
+
+		options = extend({}, options);
+
+		var option_fields     = options.fields;
+		var option_sort       = options.sort;
+		var option_sort_empty = options.sort_empty;
+
+		if (option_fields && !is_array(option_fields)) options.fields = [option_fields];
+		if (option_sort && !is_array(option_sort)) options.sort = [option_sort];
+		if (option_sort_empty && !is_array(option_sort_empty)) options.sort_empty = [option_sort_empty];
+
+		return {
+			options : options,
+			query   : String(query || '').toLowerCase(),
+			tokens  : this.tokenize(query),
+			total   : 0,
+			items   : []
+		};
+	};
+
+	/**
+	 * Searches through all items and returns a sorted array of matches.
+	 *
+	 * The `options` parameter can contain:
+	 *
+	 *   - fields {string|array}
+	 *   - sort {array}
+	 *   - score {function}
+	 *   - filter {bool}
+	 *   - limit {integer}
+	 *
+	 * Returns an object containing:
+	 *
+	 *   - options {object}
+	 *   - query {string}
+	 *   - tokens {array}
+	 *   - total {int}
+	 *   - items {array}
+	 *
+	 * @param {string} query
+	 * @param {object} options
+	 * @returns {object}
+	 */
+	Sifter.prototype.search = function(query, options) {
+		var self = this, value, score, search, calculateScore;
+		var fn_sort;
+		var fn_score;
+
+		search  = this.prepareSearch(query, options);
+		options = search.options;
+		query   = search.query;
+
+		// generate result scoring function
+		fn_score = options.score || self.getScoreFunction(search);
+
+		// perform search and sort
+		if (query.length) {
+			self.iterator(self.items, function(item, id) {
+				score = fn_score(item);
+				if (options.filter === false || score > 0) {
+					search.items.push({'score': score, 'id': id});
+				}
+			});
+		} else {
+			self.iterator(self.items, function(item, id) {
+				search.items.push({'score': 1, 'id': id});
+			});
+		}
+
+		fn_sort = self.getSortFunction(search, options);
+		if (fn_sort) search.items.sort(fn_sort);
+
+		// apply limits
+		search.total = search.items.length;
+		if (typeof options.limit === 'number') {
+			search.items = search.items.slice(0, options.limit);
+		}
+
+		return search;
+	};
+
+	// utilities
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+	var cmp = function(a, b) {
+		if (typeof a === 'number' && typeof b === 'number') {
+			return a > b ? 1 : (a < b ? -1 : 0);
+		}
+		a = asciifold(String(a || ''));
+		b = asciifold(String(b || ''));
+		if (a > b) return 1;
+		if (b > a) return -1;
+		return 0;
+	};
+
+	var extend = function(a, b) {
+		var i, n, k, object;
+		for (i = 1, n = arguments.length; i < n; i++) {
+			object = arguments[i];
+			if (!object) continue;
+			for (k in object) {
+				if (object.hasOwnProperty(k)) {
+					a[k] = object[k];
+				}
+			}
+		}
+		return a;
+	};
+
+	var trim = function(str) {
+		return (str + '').replace(/^\s+|\s+$|/g, '');
+	};
+
+	var escape_regex = function(str) {
+		return (str + '').replace(/([.?*+^$[\]\\(){}|-])/g, '\\$1');
+	};
+
+	var is_array = Array.isArray || (typeof $ !== 'undefined' && $.isArray) || function(object) {
+		return Object.prototype.toString.call(object) === '[object Array]';
+	};
+
+	var DIACRITICS = {
+		'a': '[aÀÁÂÃÄÅàáâãäåĀāąĄ]',
+		'c': '[cÇçćĆčČ]',
+		'd': '[dđĐďĎð]',
+		'e': '[eÈÉÊËèéêëěĚĒēęĘ]',
+		'i': '[iÌÍÎÏìíîïĪī]',
+		'l': '[lłŁ]',
+		'n': '[nÑñňŇńŃ]',
+		'o': '[oÒÓÔÕÕÖØòóôõöøŌō]',
+		'r': '[rřŘ]',
+		's': '[sŠšśŚ]',
+		't': '[tťŤ]',
+		'u': '[uÙÚÛÜùúûüůŮŪū]',
+		'y': '[yŸÿýÝ]',
+		'z': '[zŽžżŻźŹ]'
+	};
+
+	var asciifold = (function() {
+		var i, n, k, chunk;
+		var foreignletters = '';
+		var lookup = {};
+		for (k in DIACRITICS) {
+			if (DIACRITICS.hasOwnProperty(k)) {
+				chunk = DIACRITICS[k].substring(2, DIACRITICS[k].length - 1);
+				foreignletters += chunk;
+				for (i = 0, n = chunk.length; i < n; i++) {
+					lookup[chunk.charAt(i)] = k;
+				}
+			}
+		}
+		var regexp = new RegExp('[' +  foreignletters + ']', 'g');
+		return function(str) {
+			return str.replace(regexp, function(foreignletter) {
+				return lookup[foreignletter];
+			}).toLowerCase();
+		};
+	})();
+
+
+	// export
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+	return Sifter;
+}));
+
+
+},{}],297:[function(require,module,exports){
 /*jslint onevar:true, undef:true, newcap:true, regexp:true, bitwise:true, maxerr:50, indent:4, white:false, nomen:false, plusplus:false */
 /*global define:false, require:false, exports:false, module:false, signals:false */
 
@@ -79479,8 +83171,8 @@ function load() {
 exports.enable(load());
 
 },{"./debug":320}],320:[function(require,module,exports){
-arguments[4][134][0].apply(exports,arguments)
-},{"dup":134,"ms":321}],321:[function(require,module,exports){
+arguments[4][132][0].apply(exports,arguments)
+},{"dup":132,"ms":321}],321:[function(require,module,exports){
 /**
  * Helpers.
  */

@@ -29,6 +29,7 @@ export class WordSelector extends React.Component<any, any> {
         this.onSelectImage = this.onSelectImage.bind(this);
         this.updateWord = this.updateWord.bind(this);
         this.deleteImage = this.deleteImage.bind(this);
+        this.deleteAllImages = this.deleteAllImages.bind(this);
     }
 
     componentDidMount() {
@@ -66,12 +67,17 @@ export class WordSelector extends React.Component<any, any> {
     updateWord(e) {
         this.wordSelectedForEditing.value = (ReactDOM.findDOMNode(this.refs.wordInput) as HTMLInputElement).value;
         this.wordSelectedForEditing.searchTerm = (ReactDOM.findDOMNode(this.refs.searchTerm) as HTMLInputElement).value;
-        this.wordSelectedForEditing.tags = (ReactDOM.findDOMNode(this.refs.tags) as HTMLInputElement).value.split(',');
+        this.wordSelectedForEditing.tags = this.tagSelector.items;
         this.wordSelectedForEditing.syllables = (ReactDOM.findDOMNode(this.refs.syllables) as HTMLInputElement).value.split(',');
         this.wordSelectedForEditing.images = this.state.selectedImages;
         this.updateWordSignal.dispatch(this.wordSelectedForEditing);
         this.wordSelectedForEditing = undefined;
-        this.setState({editMode : false});
+
+        this.tagSelector.clearOptions();
+        (ReactDOM.findDOMNode(this.refs.wordInput) as HTMLInputElement).value = '';
+        (ReactDOM.findDOMNode(this.refs.searchTerm) as HTMLInputElement).value = '';
+        (ReactDOM.findDOMNode(this.refs.syllables) as HTMLInputElement).value = '';
+        this.setState({editMode : false,  searchImages : [], selectedImages : []});
     }
 
     onSearchTermChange(e) {
@@ -107,8 +113,12 @@ export class WordSelector extends React.Component<any, any> {
         this.deleteWordSignal.dispatch(word);
     }
 
+    deleteAllImages(e) {
+        this.setState({selectedImages : []});
+    }
+
     deleteImage(e) {
-        this.setState({selectedImages : this.state.selectedImages.filter((item) => item.link !== $(e.target).prev().attr('src'))})
+        this.setState({selectedImages : this.state.selectedImages.filter((item) => item.image.thumbnailLink !== $(e.currentTarget).prev().attr('src'))})
     }
 
     addWord(e) {
@@ -130,7 +140,7 @@ export class WordSelector extends React.Component<any, any> {
     render() {
         let selectedImages = this.state.selectedImages.map((item, index) => (
             <li key={index} >
-                <img className="media-object" src={item.link} width="20" height="20"/>
+                <img className="media-object" src={item.image.thumbnailLink} width="40" height="40"/>
                 <button  type="button" onClick={this.deleteImage} className="close" aria-label="Close"><span aria-hidden="true">&times;</span></button>
             </li>)
         );
@@ -168,6 +178,7 @@ export class WordSelector extends React.Component<any, any> {
                         <label className="col-md-2">images</label>
                         <div className="col-md-10">
                             <ul className="list-inline">{selectedImages} </ul>
+                            <button  type="button" onClick={this.deleteAllImages} className="close" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                         </div>
                     </div>
 

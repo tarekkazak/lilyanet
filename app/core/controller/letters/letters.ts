@@ -30,8 +30,12 @@ export class LetterController {
                 connectionsMap.set(socket, init(socket, io, mode));
             }
 
-            socket.on('disconnect', (socket) => {
+            socket.on('disconnect', () => {
                 console.log('disconnected', socket.id);
+                let model = connectionsMap.get(socket);
+                if(model) {
+                    model.close(); 
+                }
                 connectionsMap.delete(socket);
             });
         });

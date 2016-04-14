@@ -5,7 +5,7 @@ export class WordMediator extends AbstractMediator {
     
     constructor(component:any) {
         super(component);
-        this.messageBus.on(IO_EVENT.LETTER_UPDATED, this.updateView);
+        this.messageBus.on(IO_EVENT.LETTER_UPDATED, this.updateView.bind(this));
     }
 
     private updateView(payload) {
@@ -13,6 +13,7 @@ export class WordMediator extends AbstractMediator {
         this.component.setState({
             letters : letters
         }, ()=> {
+        console.log('words updated');
             this.messageBus.emit(IO_EVENT.VIEW_UPDATED)
         });
     }

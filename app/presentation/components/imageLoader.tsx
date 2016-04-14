@@ -14,7 +14,7 @@ export class ImageLoader extends React.Component<any,any> {
     render() {
         let images = _.map(this.state.images, (item:any) =>{
             return (
-                    <img key={item.url}width="200" height="200" src={item.url} />
+                    <img key={item.link}width="200" height="200" src={item.link} />
                    );
         });
         let style = {

@@ -70,6 +70,10 @@ export class LilyaNet {
             this.deleteWord(word); 
         });
     }
+
+    close() {
+        this.dao.close();
+    }
     
     getLetters() {
         return this.letters;
@@ -122,7 +126,7 @@ export class LilyaNet {
         this.dao.addWord(word).then(() => {
             return this.getAllWords();
         }).then((words) => {
-            console.log('all words after add', words)
+        //console.log('all words after add', words)
             this.messageService.sendMessage(IO_EVENT.WORD_LIST_UPDATED, words);
         });
     }
@@ -136,9 +140,9 @@ export class LilyaNet {
     
     getWordList() {
         var getSelectedWords =  this.getSelectedItems('value');
-        var values = this.getAllWords();
-        var words = getSelectedWords(values)
-        return words;
+        return this.getAllWords().then((values) => {
+            return getSelectedWords(values);
+        });
     }
 
     containsWord(word) {
@@ -151,8 +155,9 @@ export class LilyaNet {
     }
     
     getWordData(word) {
-        let wordData = this.getAllWords().filter((x) => x.value === word);
-        return Maybe.fromNullable(wordData[0]);
+        return this.getAllWords().then((result) => {
+            return result.filter((x) => x.value === word)
+        });
     }
     
     isResourceLocal(word) {

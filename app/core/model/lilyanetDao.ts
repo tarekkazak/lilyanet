@@ -19,6 +19,10 @@ export class LilyanetDao {
 
     }
 
+    close() {
+        this.dbConnect.connection.close();
+    }
+
     getWords(query):any {
         query === undefined ? null : query;
         console.log('query', query);
@@ -35,7 +39,7 @@ export class LilyanetDao {
     }
 
     save(word):any {
-        console.log('save', word);
+    //console.log('save', word);
         return word.save();
     }
 }
