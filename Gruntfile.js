@@ -61,7 +61,7 @@ module.exports = function(grunt) {
             dev : {
                 script : 'app/server.js',
                 options : {
-                    //nodeArgs : ['--debug-brk'],
+                   //nodeArgs : ['--debug-brk'],
                     watch : ['app'],
                     env : {
                         PORT : '5500',

@@ -28,8 +28,10 @@ export class WordSelector extends React.Component<any, any> {
         this.onSearchTermChange = this.onSearchTermChange.bind(this);
         this.onSelectImage = this.onSelectImage.bind(this);
         this.updateWord = this.updateWord.bind(this);
+        this.addWord = this.addWord.bind(this);
         this.deleteImage = this.deleteImage.bind(this);
         this.deleteAllImages = this.deleteAllImages.bind(this);
+        this.cancelEdit = this.cancelEdit.bind(this);
     }
 
     componentDidMount() {
@@ -72,7 +74,11 @@ export class WordSelector extends React.Component<any, any> {
         this.wordSelectedForEditing.images = this.state.selectedImages;
         this.updateWordSignal.dispatch(this.wordSelectedForEditing);
         this.wordSelectedForEditing = undefined;
+        this.clearForm();
 
+    }
+
+    private clearForm() {
         this.tagSelector.clearOptions();
         (ReactDOM.findDOMNode(this.refs.wordInput) as HTMLInputElement).value = '';
         (ReactDOM.findDOMNode(this.refs.searchTerm) as HTMLInputElement).value = '';
@@ -105,6 +111,10 @@ export class WordSelector extends React.Component<any, any> {
         this.onSearchTermChange(null);
     }
 
+    cancelEdit(e) {
+        this.setState({editMode : false});
+    }
+
     deleteWord(e) {
         e.preventDefault();
         e.stopPropagation();
@@ -131,6 +141,7 @@ export class WordSelector extends React.Component<any, any> {
         };
 
         this.addWordSignal.dispatch(word);
+        this.clearForm();
     }
 
     private getWordId(element) {
@@ -197,8 +208,9 @@ export class WordSelector extends React.Component<any, any> {
                     </div>
 
                     <div className="col-md-12">
-                        <button className="btn btn-primary" disabled={!this.state.editMode} onClick={this.updateWord.bind(this)}>Update</button>
-                        <button className="btn btn-success" disabled={this.state.editMode} onClick={this.addWord.bind(this)}>Add</button>
+                        <button className="btn btn-primary" disabled={!this.state.editMode} onClick={this.updateWord}>Update</button>
+                        <button className="btn btn-success" disabled={this.state.editMode} onClick={this.addWord}>Add</button>
+                        <button className="btn btn-default" disabled={!this.state.editMode} onClick={this.cancelEdit}>Cancel</button>
                     </div>
                     <div className="form-group">
                         <label className="col-md-2">Selected Words</label>

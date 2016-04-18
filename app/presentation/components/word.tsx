@@ -16,15 +16,6 @@ export class Word extends React.Component<any,any> {
         };
     }
 
-    componentDidMount() {
-        (ReactDOM.findDOMNode(this.refs.hInput) as HTMLInputElement).focus();
-    }
-
-    onInputChange(e) {
-        var value = e.target.value;
-        //location.href = '/letter?letter=' + value;
-    }
-
 
     render() {
         var lettersTransform = _.compose( monads.map((character, id) => ({id, character})), 
@@ -43,7 +34,6 @@ export class Word extends React.Component<any,any> {
                 <div>
                     <div>
                         {letters}
-                        <input onChange={this.onInputChange} type="text" ref="hInput" />
                     </div>
                 </div>
               );

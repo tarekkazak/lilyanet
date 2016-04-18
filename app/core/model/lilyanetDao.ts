@@ -26,7 +26,7 @@ export class LilyanetDao {
     getWords(query):any {
         query === undefined ? null : query;
         console.log('query', query);
-        return () => Word.find(query).exec();
+        return () => Word.find(query).sort({value : 'asc'}).exec();
     }
 
     findById(id) {
@@ -39,7 +39,6 @@ export class LilyanetDao {
     }
 
     save(word):any {
-    //console.log('save', word);
         return word.save();
     }
 }
