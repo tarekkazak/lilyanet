@@ -1,46 +1,41 @@
-import {appContainer} from '../../common/appContainer.js';
-import {Word} from '../../../public/js/components/word.jsx';
-import {_} from 'lodash';
-import {ioEvents as IO_EVENT} from '../../common/events.js';
-import {LetterGenerator} from'../../service/letterGeneratorService.js';
-var React = require('react/addons');
+/// <reference path="../../../../typings/tsd.d.ts" />
+import _ =  require('lodash');
+import {IOEvents as IO_EVENT} from '../../../common/events';
+import {init} from '../../../common/appContainer';
 
 export class LetterController {
+    
+    public routes;
+
     constructor(io) {
         this.init(io);
     }
 
     init(io) {
-        var WordFac = React.createFactory(Word), 
-            isSlideshow,
-            model = appContainer.model,
+        let isSlideshow,
             mode = '',
             connectionsMap = new WeakMap();
 
         function defaultRender(req, res) {
-            var content = React.renderToString(WordFac({
-                letters : model.letters,
-                words : model.getWords(),
-                isLocalResource : false
-            }));
 
             res.render('index', {
-                content : content,
-                word : '',
-                isLocalResource : false,
-                source : process.env.ENVIRONMENT === 'DEV' ? 'bundle.js' : 'bundle.min.js',
+                source : process.env.ENVIRONMENT === 'DEV' ? 'lilyanet.js' : 'lilyanet.min.js',
                 socketServer : process.env.SOCKET_SERVER
             });
         }
     
         io.on('connection', (socket) => {
-            console.log('connected', socket.id);
+            console.log('socket connected', socket.id);
             if(isSlideshow) {
-                connectionsMap.set(socket, new LetterGenerator(model, io, socket, mode));
+                connectionsMap.set(socket, init(socket, io, mode));
             }
 
             socket.on('disconnect', () => {
                 console.log('disconnected', socket.id);
+                let model = connectionsMap.get(socket);
+                if(model) {
+                    model.close(); 
+                }
                 connectionsMap.delete(socket);
             });
         });
@@ -71,33 +66,14 @@ export class LetterController {
                     get : [
                         (req, res, next) => {
                             //before processing next request, check if word is already complete
-                            if(model.wordComplete()) {
-                                model.resetWord();
-                            }
                             next();
                     }, (req, res) => {
                         var content,
                             isLocalResource = false;
-                        model.letters.push(req.query.letter);
 
                         console.log(req.query);
-                        
-                        isLocalResource = model.isResourceLocal();
-                        //console.log('letters', model.letters);
                         console.log('is local resource', isLocalResource);
 
-                        content = React.renderToString(WordFac({
-                            letters : model.letters,
-                            words : model.getWords(),
-                            isLocalResource : isLocalResource
-                        }));
-
-                        res.render('index', {
-                            content : content,
-                            word : model.letters.join(''),
-                            source : process.env.ENVIRONMENT === 'DEV' ? 'bundle.js' : 'bundle.min.js',
-                            isLocalResource : isLocalResource
-                        });
                     }]
                 },
                 {
@@ -105,10 +81,6 @@ export class LetterController {
                     post : (req, res) => {
                         var letterData = req.body,
                             letter = letterData.case === 'upper' ? letterData.character.toUpperCase() :  letterData.character;
-                        if(letter.first) {
-                            lettersForWord = [];
-                        }
-                        lettersForWord.push(letter);
                         io.emit(IO_EVENT.WORD_UPDATED);
                     }
                 }

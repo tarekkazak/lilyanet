@@ -1,6 +1,6 @@
-var React = require('react/addons');
+import React = require('react');
 
-export class Letter extends React.Component {
+export class Letter extends React.Component<any,any> {
     constructor(props) {
         super(props);
     }
