@@ -7,6 +7,7 @@ import {LilyanetDao} from './lilyanetDao';
 import {IOEvents as IO_EVENT} from '../../common/events';
 import {messageService} from '../../common/appContainer';
 
+@messageService
 export class LilyaNet {
 
     
@@ -18,7 +19,6 @@ export class LilyaNet {
     private wordComplete;
     private dao;
 
-    @messageService
     public messageService;
 
 

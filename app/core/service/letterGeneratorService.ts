@@ -2,9 +2,9 @@
 import {IOEvents as IO_EVENT} from '../../common/events';
 import {messageService} from '../../common/appContainer';
 
+@messageService
 export class LetterGenerator {
 
-    @messageService
     public messageService;
 
     private generateLetter;
@@ -18,7 +18,7 @@ export class LetterGenerator {
 
     start() {
         var startGenerator = () => {
-            console.log('start generation');
+        console.log('start generation');
             return this.model.getSelectedWords().then((words) => {
                 var gen = this.generateLetter(words);
                 return [gen, gen.next().value];
@@ -51,7 +51,7 @@ export class LetterGenerator {
         this.messageService.on(IO_EVENT.VIEW_UPDATED, () => {
             var wait = 1300;
             var generated =  this.gen.next().value;
-            console.log('generated', generated);
+            //console.log('generated', generated);
             this.messageService.sendMessage(IO_EVENT.WORD_COMPLETE, {complete : false}, 0);
             if(generated.complete === true) {
                 var word = generated.word;
@@ -62,16 +62,14 @@ export class LetterGenerator {
                     setTimeout(() => this.start(), 3500);
                     return;
                 } else {
-                    console.log('generated word', word.value, word.images.length);
+                //console.log('generated word', word.value, word.images.length);
                     wait = 5000;
                 }
              }
              
             this.messageService.sendMessage(IO_EVENT.LETTER_UPDATED, generated, wait);
-             
-
-            
         });
+        
         this.start();
     }
 }
