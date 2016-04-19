@@ -15,7 +15,7 @@ module.exports = function(grunt) {
             },
             dev : {
                 files : ['app/common/**/*.ts','app/presentation/**/*.ts', 'app/presentation/**/*.tsx', '**/*.scss'],
-                tasks : ['ts:ui', 'browserify:dev', 'sass:dev'],
+                tasks : ['ts:ui', 'browserify', 'sass:dev'],
                 options : {
                     interrupt : false,
                     atBegin : true,
@@ -43,18 +43,8 @@ module.exports = function(grunt) {
             }
         },
         browserify : {
-            dev : {
-                files : {
-                    'public/js/lilyanet.js' :['app/presentation/lilyanet.js']
-                }
-            },
-            prod : {
-                files : {
-                    'public/js/bundle.js' :['public/js/app.jsx']
-                },
-                options : {
-                    transform :['babelify' ]
-                }
+            files : {
+                'public/js/lilyanet.js' :['app/presentation/lilyanet.js']
             }
         },
         nodemon: {
@@ -127,9 +117,6 @@ module.exports = function(grunt) {
             }
 
         },
-        babel : {
-
-        },
         ts : {
             options : {
                 module : 'commonjs',
@@ -148,9 +135,6 @@ module.exports = function(grunt) {
             ui : {
                 src : ['app/presentation/**/*.ts', 'app/presentation/**/*.tsx', 'app/common/**/*.ts']
             },
-            prod : {
-
-            },
             tests : {
                 src : ['app/model/*.ts', 'tests/**/*.spec.ts']
             }
@@ -161,7 +145,7 @@ module.exports = function(grunt) {
                     screwIE8 : true
                 },
                 files : {
-                    'public/js/bundle.min.js' : ['public/js/bundle.js']
+                    'public/js/lilyanet.min.js' : ['public/js/lilyanet.js']
                 }
             }
         }
