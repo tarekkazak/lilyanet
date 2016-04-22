@@ -15,7 +15,7 @@ module.exports = function(grunt) {
             },
             dev : {
                 files : ['app/common/**/*.ts','app/presentation/**/*.ts', 'app/presentation/**/*.tsx', '**/*.scss'],
-                tasks : ['ts:ui', 'browserify', 'sass:dev'],
+                tasks : ['ts:ui', 'browserify:dev', 'sass:dev'],
                 options : {
                     interrupt : false,
                     atBegin : true,
@@ -43,8 +43,15 @@ module.exports = function(grunt) {
             }
         },
         browserify : {
-            files : {
-                'public/js/lilyanet.js' :['app/presentation/lilyanet.js']
+            dev : {
+                files : {
+                    'public/js/lilyanet.js' :['app/presentation/lilyanet.js']
+                }
+            },
+            prod : {
+                files : {
+                    'public/js/lilyanet.min.js' :['app/presentation/lilyanet.js']
+                }
             }
         },
         nodemon: {
@@ -160,9 +167,8 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-nodemon');
     grunt.loadNpmTasks('grunt-sass');
     grunt.loadNpmTasks('grunt-ts');
-//    grunt.loadNpmTasks('grunt-babel');
     grunt.loadNpmTasks('grunt-contrib-uglify');
     grunt.registerTask('tests', ['ts:tests', 'jasmine_nodejs:tests']);
     grunt.registerTask('dev', ['concurrent']);
-    grunt.registerTask('prod', ['browserify:prod', 'uglify:prod']);
+    grunt.registerTask('prod', ['sass:dev', 'ts:server', 'ts:ui', 'browserify:prod']);
 };
