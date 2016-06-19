@@ -63,6 +63,10 @@ export function init(socket, io, mode) {
     };
 
     if(!initialized) {
+        let tagSchema = new mongoose.Schema({
+            text : String
+        });
+
         let wordSchema = new mongoose.Schema({
             value : String,
             syllables : Array,
@@ -73,6 +77,7 @@ export function init(socket, io, mode) {
         });
 
         exports.Word = mongoose.model('Word', wordSchema);
+        exports.Tag = mongoose.model('Tag', tagSchema);
     
     }
 

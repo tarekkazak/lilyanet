@@ -39,7 +39,5 @@ let imageLoader = ReactDOM.render(<ImageLoader />, document.getElementById('imag
     let imageLoaderMediator = new ImageLoaderMediator(this);
 });
 
-let wordSelector = ReactDOM.render(<WordSelector />, document.getElementById('word-selector-container'), function() {
-    let wordSelectorMediator = new WordSelectorMediator(this);
-});
+let wordSelector = ReactDOM.render(<WordSelector />, document.getElementById('word-selector-container'));
 

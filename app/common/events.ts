@@ -5,10 +5,15 @@ export class IOEvents {
         static SELECT_WORD = 'selectWord';
         static UPDATE_WORD = 'updateWord';
         static DELETE_WORD = 'deleteWord';
-        static VIEW_UPDATED = 'viewUpdated';
         static RENDER_COMPLETE = 'renderComplete';
         static WORD_LIST_UPDATED = 'wordListUpdated';
         static LETTER_UPDATED = 'letterUpdated';
+
+        static ADD_TAG = 'addTag';
+        static DELETE_TAG = 'deleteTag';
+        static TAG_LIST_UPDATED = 'tagListUpdated';
+
+        static VIEW_UPDATED = 'viewUpdated';
 }
 
 

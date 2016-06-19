@@ -2,31 +2,93 @@ var monads = require('folktale/control').monads;
 var Maybe = require('folktale/data').Maybe;
 import React = require('react');
 import ReactDOM = require('react-dom');
+var _ = require('lodash');
+import {TagSelector} from './tagSelector';
+import {ImageSelector} from './imageSelector';
 import { Signal } from 'signals';
+import {WordDependentMediator} from '../mediators/wordDependentMediator';
+import {WordCreateUpdateDeleteMediator} from '../mediators/wordCreateUpdateDeleteMediator';
+import {mediate} from '../mediators/abstractMediator';
 
+    const FormGroup = (props) => {
+        return(
+              <div className="form-group">
+                  <label className="col-md-2">{props.label}</label>
+                  <div className={"col-md-" + props.colWidth}>
+                      {props.children}
+                  </div>
+              </div>
+
+              );
+    };
+
+    const trace = (message) => (input) => { 
+        console.log(message, input) ;
+        return input;
+    };
+
+    const Col = (props) => <div className={"col-md-" + props.colWidth}>{props.children}</div>;
+    const Row = (props) => <div className="row"> {props.children} </div>;
+
+    const wordValueFormItem = (props) => {
+        return (
+            <div className="form-horizontal">
+                <FormGroup label="Add word" colWidth="10"  >
+                    <input className="form-control" value={props.wordValue}  type="text" ref="wordInput"  />
+                </FormGroup>
+                
+                {props.tagSelector}
+            </div>
+
+         );
+    };
+
+    const syllablesFormItem = (props) => {
+        return (
+            <div className="form-horizontal">
+                <FormGroup label="Syllables" colWidth="10"  >
+                    <input className="form-control" type="text" ref="syllables" value={props.syllables}  />
+                </FormGroup>
+            </div>   
+
+        );
+    };
+
+    const selectedImagesFormItem = (props) => {
+        return (
+
+            <FormGroup label="Images" colWidth="10" >
+                    <ul className="list-inline">{props.selectedImages} </ul>
+                    <button  type="button" onClick={props.deleteAllImages} className="close" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            </FormGroup>
+            );
+        };
+
+@mediate(WordDependentMediator, WordCreateUpdateDeleteMediator)
 export class WordSelector extends React.Component<any, any> {
     
     public addWordSignal:Signal;
     public selectWordSignal:Signal;
     public deleteWordSignal:Signal;
     public updateWordSignal:Signal;
+
     public refs;
     private wordSelectedForEditing;
-    private tagSelector:any;
+    private tagSelector;
+    private imageSelector;
+
 
     constructor(props) {
         super(props);
         this.state = {
             words : [],
+            wordToEdit : {},
             editMode : false,
-            searchImages : [],
             selectedImages : []
         };
         this.onSelectWord = this.onSelectWord.bind(this);
         this.deleteWord = this.deleteWord.bind(this);
         this.onEditWord = this.onEditWord.bind(this);
-        this.onSearchTermChange = this.onSearchTermChange.bind(this);
-        this.onSelectImage = this.onSelectImage.bind(this);
         this.updateWord = this.updateWord.bind(this);
         this.addWord = this.addWord.bind(this);
         this.deleteImage = this.deleteImage.bind(this);
@@ -35,18 +97,8 @@ export class WordSelector extends React.Component<any, any> {
     }
 
     componentDidMount() {
-
-        this.tagSelector = $(ReactDOM.findDOMNode(this.refs.tags)).selectize({
-            plugins : ['remove_button'],
-            delimiter : ',',
-            create : (input) => {
-                return {
-                    text : input,
-                    value: input
-                }
-            }
-
-        })[0].selectize;
+        this.tagSelector = <TagSelector />;    
+        this.imageSelector = <ImageSelector />;    
     }
 
     onSelectWord(e) {
@@ -61,15 +113,10 @@ export class WordSelector extends React.Component<any, any> {
         return this.state.searchImages.filter((item) => item.image.thumbnailLink === url)[0];
     }
 
-    onSelectImage(e) {
-        let imageObj = this.getImageObject($(e.target).attr('src'));
-        this.setState({selectedImages : this.state.selectedImages.concat([imageObj])});
-    }
-
     updateWord(e) {
         this.wordSelectedForEditing.value = (ReactDOM.findDOMNode(this.refs.wordInput) as HTMLInputElement).value;
         this.wordSelectedForEditing.searchTerm = (ReactDOM.findDOMNode(this.refs.searchTerm) as HTMLInputElement).value;
-        this.wordSelectedForEditing.tags = this.tagSelector.items;
+        this.wordSelectedForEditing.tags = this.tagSelector.getItems();
         this.wordSelectedForEditing.syllables = (ReactDOM.findDOMNode(this.refs.syllables) as HTMLInputElement).value.split(',');
         this.wordSelectedForEditing.images = this.state.selectedImages;
         this.updateWordSignal.dispatch(this.wordSelectedForEditing);
@@ -79,21 +126,7 @@ export class WordSelector extends React.Component<any, any> {
     }
 
     private clearForm() {
-        this.tagSelector.clearOptions();
-        (ReactDOM.findDOMNode(this.refs.wordInput) as HTMLInputElement).value = '';
-        (ReactDOM.findDOMNode(this.refs.searchTerm) as HTMLInputElement).value = '';
-        (ReactDOM.findDOMNode(this.refs.syllables) as HTMLInputElement).value = '';
-        this.setState({editMode : false,  searchImages : [], selectedImages : []});
-    }
-
-    onSearchTermChange(e) {
-        let term = (ReactDOM.findDOMNode(this.refs.searchTerm) as HTMLInputElement).value;
-        let query =`https://www.googleapis.com/customsearch/v1?key=AIzaSyB8CHLzyq52zdN33jnkuUAfqyp4GbBVzxU&cx=003704182668535555907:clqfeypkaeo&q=${term}&searchType=image&num=10`;
-
-        $.get(query).then((data) => {
-            console.log(data);
-            this.setState({searchImages : data.items});
-       });
+        this.setState({editMode : false,  searchImages : [], selectedImages : [], wordToEdit : null});
     }
 
     onEditWord(e) {
@@ -101,18 +134,17 @@ export class WordSelector extends React.Component<any, any> {
         e.stopPropagation();
         let id = this.getWordId(e.target);
         let word = this.state.words.filter((item) => item._id === id)[0];
-        (ReactDOM.findDOMNode(this.refs.wordInput) as HTMLInputElement).value = word.value;
-        (ReactDOM.findDOMNode(this.refs.searchTerm) as HTMLInputElement).value = word.searchTerm;
-        this.tagSelector.clearOptions();
-        word.tags.map((item) => this.tagSelector.createItem(item));
-        (ReactDOM.findDOMNode(this.refs.syllables) as HTMLInputElement).value = word.syllables.join(',');
-        this.setState({editMode: true, selectedImages : word.images});
+
+        //gTthis.tagSelector.createItem(item));
+        this.setState({editMode: true, selectedImages : word.images, wordToEdit : word});
         this.wordSelectedForEditing = word;
-        this.onSearchTermChange(null);
+        let input = (ReactDOM.findDOMNode(this.refs.searchTerm) as HTMLInputElement);
+        input.value = word.searchTerm;
+        $(input).trigger('change');
     }
 
     cancelEdit(e) {
-        this.setState({editMode : false});
+        this.setState({editMode : false, wordToEdit : null});
     }
 
     deleteWord(e) {
@@ -136,7 +168,7 @@ export class WordSelector extends React.Component<any, any> {
            value : (ReactDOM.findDOMNode(this.refs.wordInput) as HTMLInputElement).value,
            searchTerm : (ReactDOM.findDOMNode(this.refs.searchTerm) as HTMLInputElement).value,
            images : this.state.selectedImages,
-           tags : this.tagSelector.items,
+           tags : this.tagSelector.getItems(),
            syllables : (ReactDOM.findDOMNode(this.refs.syllables) as HTMLInputElement).value.split(',')
         };
 
@@ -155,11 +187,7 @@ export class WordSelector extends React.Component<any, any> {
                 <button  type="button" onClick={this.deleteImage} className="close" aria-label="Close"><span aria-hidden="true">&times;</span></button>
             </li>)
         );
-        let images = this.state.searchImages.map((item, index) => (
-            <li key={index} >
-                <img className="media-object" onClick={this.onSelectImage}  src={item.image.thumbnailLink} width={item.image.thumbnailWidth} height={item.image.thumbnailHeight} />
-            </li>)
-        );
+
         let items = this.state.words.map((word) => (
             <li key={word._id} >
                 <label className={ word.selected ? 'btn btn-primary' : 'btn btn-default' } onClick={this.onSelectWord} data-model={word._id}>
@@ -169,59 +197,42 @@ export class WordSelector extends React.Component<any, any> {
                 </label>
             </li>)
         );
+
+
+        let makeChild = (...components) => ({children : components});
+        //let makeChildOfCol = _.compose((props) => props , makeChild)
+
+        let makeWord = _.compose(trace('col'),  Col, trace('children made'), makeChild, trace('word value'),  wordValueFormItem );
+        let makeSyllables = _.compose(  Col, makeChild,  syllablesFormItem );
+        let makeSelectedImages = _.compose(  Col, makeChild,  selectedImagesFormItem );
+        let firstRow = _.compose(Row, makeChild, () => [makeWord({wordValue : this.state.wordToEdit.value, tagSelector : this.tagSelector}), makeSyllables({syllables : this.state.wordToEdit.syllables})]);
+        let secondRow = _.compose(Row, makeChild, () => makeSelectedImages({selectedImages, deleteAllImages : this.deleteAllImages}));
         return (
-                <div className="form-horizontal">
-                    <div className="form-group">
-                        <label className="col-md-2">Add Word</label>
-                        <div className="col-md-10">
-                            <input className="form-control" type="text" ref="wordInput"  />
-                        </div>
-                    </div>
+                <div>
 
-                    <div className="form-group">
-                        <label className="col-md-2">Syllables</label>
-                        <div className="col-md-10">
-                            <input className="form-control" type="text" ref="syllables"  />
-                        </div>
-                    </div>
+                    {firstRow()}
+                    {secondRow()}
+                    
+                    <div className="row">
+                        <div className="form-horizontal">
+                            {this.imageSelector}
 
-                    <div className="form-group">
-                        <label className="col-md-2">images</label>
-                        <div className="col-md-10">
-                            <ul className="list-inline">{selectedImages} </ul>
-                            <button  type="button" onClick={this.deleteAllImages} className="close" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                        </div>
-                    </div>
 
-                    <div className="form-group">
-                        <label className="col-md-2">tags</label>
-                        <div className="col-md-10">
-                            <input className="form-control" type="text" ref="tags"  />
-                        </div>
-                    </div>
+                            <FormGroup label="Images" colWidth="10" >
+                                    <ul  className="word-selector-word-list list-inline">
+                                        {items}
+                                    </ul>
 
-                    <div className="form-group">
-                        <label className="col-md-2">search term</label>
-                        <div className="col-md-10">
-                            <input onChange={this.onSearchTermChange} className="form-control" type="text" ref="searchTerm"  />
+                            </FormGroup>
                         </div>
-                    </div>
 
-                    <div className="col-md-12">
-                        <button className="btn btn-primary" disabled={!this.state.editMode} onClick={this.updateWord}>Update</button>
-                        <button className="btn btn-success" disabled={this.state.editMode} onClick={this.addWord}>Add</button>
-                        <button className="btn btn-default" disabled={!this.state.editMode} onClick={this.cancelEdit}>Cancel</button>
-                    </div>
-                    <div className="form-group">
-                        <label className="col-md-2">Selected Words</label>
                         <div className="col-md-12">
-                            <ul  className="word-selector-word-list list-inline">
-                                {items}
-                            </ul>
-                            <ul  className=" list-inline">
-                                {images}
-                            </ul>
 
+                            <div className="pull-right">
+                                <button className="btn btn-primary" disabled={!this.state.editMode} onClick={this.updateWord}>Update</button>
+                                <button className="btn btn-success" disabled={this.state.editMode} onClick={this.addWord}>Add</button>
+                                <button className="btn btn-default" disabled={!this.state.editMode} onClick={this.cancelEdit}>Cancel</button>
+                            </div>
                         </div>
                     </div>
                 </div>

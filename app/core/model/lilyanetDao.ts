@@ -1,4 +1,4 @@
-import {dao, Word} from '../../common/appContainer';
+import {dao, Word, Tag} from '../../common/appContainer';
 
 export class LilyanetDao {
     @dao
@@ -25,20 +25,35 @@ export class LilyanetDao {
 
     getWords(query):any {
         query === undefined ? null : query;
-        console.log('query', query);
         return () => Word.find(query).sort({value : 'asc'}).exec();
     }
+
 
     findById(id) {
         return Word.findById(id).exec();
     }
+
 
     addWord(word):any {
         let newWord = new Word(word);
         return this.save(newWord);
     }
 
-    save(word):any {
-        return word.save();
+    getTags(query):any {
+        query === undefined ? null : query;
+        return () => Tag.find(query).sort({value : 'asc'}).exec();
+    }
+
+    addTag(tag):any {
+        let newTag = new Tag(tag);
+        console.log('new tag', newTag);
+        return this.save(newTag);
+    }
+    deleteTag(tag):any {
+        return Tag.findOneAndRemove({id: tag._id});
+    }
+
+    save(model):any {
+        return model.save();
     }
 }

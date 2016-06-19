@@ -12,6 +12,10 @@ app.engine('jade', require('jade').__express);
 app.set('views', __dirname + '/views');
 app.set('view engine', 'jade');
 app.use(express.static(__dirname + '/../public'));
+if(process.env.ENVIRONMENT === 'DEV') {
+    console.log('dev');
+    app.use(express.static(__dirname));
+}
 
 for (let route of letterRoutes) {
    var ct = app.route(route.path);

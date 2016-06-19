@@ -16,7 +16,8 @@ export class LilyaNet {
     private getSelectedWords;
     private getAllWords;
     private wordDataCompose;
-    private wordComplete;
+
+    private getAllTags;
     private dao;
 
     public messageService;
@@ -37,28 +38,27 @@ export class LilyaNet {
                 monads.map((x) => x.toLowerCase()),
                 monads.map((x) => x.join ? x.join('') : x));
 
-        this.wordComplete = this.containsWord;
         //api for dao
         this.getSelectedWords =  this.dao.getWords({selected : true});
         this.getAllWords =  this.dao.getWords(undefined);
+        this.getAllTags =  this.dao.getTags(undefined);
 
     }
 
     init() {
         this.dao.connect().then(() => {
             let generator = new LetterGenerator(this, this.mode).init();
-            return this.getAllWords();
-        }).then((words) => {
-            this.messageService.sendMessage(IO_EVENT.WORD_LIST_UPDATED, words);
+            return Promise.all([this.getAllWords(), this.getAllTags()]);
+        }).then((result) => {
+            this.messageService.sendMessage(IO_EVENT.WORD_LIST_UPDATED, result[0]);
+            this.messageService.sendMessage(IO_EVENT.TAG_LIST_UPDATED, result[1]);
         });
 
         this.messageService.on(IO_EVENT.UPDATE_WORD, (word) => {
-            console.log('on update word');
             this.updateWord(word); 
         });
 
         this.messageService.on(IO_EVENT.ADD_WORD, (word) => {
-            console.log('on add word');
             this.addWord(word); 
         });
 
@@ -68,6 +68,14 @@ export class LilyaNet {
 
         this.messageService.on(IO_EVENT.DELETE_WORD, (word) => {
             this.deleteWord(word); 
+        });
+
+        this.messageService.on(IO_EVENT.ADD_TAG, (tag) => {
+            this.addTag(tag); 
+        });
+
+        this.messageService.on(IO_EVENT.DELETE_TAG, (tag) => {
+            this.deleteTag(tag); 
         });
     }
 
@@ -105,7 +113,7 @@ export class LilyaNet {
         }).then(() => {
             return this.getAllWords();
         }).then((words) => {
-            this.messageService.sendMessage(IO_EVENT.WORD_LIST_UPDATED, words);
+            this.messageService.sendMessage(IO_EVENT.WORD_LIST_UPDATED,  words);
         });
     }
 
@@ -121,8 +129,8 @@ export class LilyaNet {
         });
     }
 
+
     addWord(word) {
-        console.log('add word', word);
         this.dao.addWord(word).then(() => {
             return this.getAllWords();
         }).then((words) => {
@@ -148,11 +156,6 @@ export class LilyaNet {
     containsWord(word) {
         return !this.wordDataCompose(Maybe.of(word)).isNothing;
     }
-
-
-    resetWord() {
-        this.letters = [];
-    }
     
     getWordData(word) {
         return this.getAllWords().then((result) => {
@@ -173,6 +176,25 @@ export class LilyaNet {
     getSearchTerm(word) {
         return this.wordDataCompose(Maybe.of(word))
                 .chain((x) => x.searchTerm || word);
+    }
+
+    addTag(tag) {
+        this.dao.addTag(tag).then(() => {
+            return this.getAllTags();
+        }).then((tags) => {
+        //console.log('all words after add', words)
+            this.messageService.sendMessage(IO_EVENT.TAG_LIST_UPDATED, tags);
+        });
+    }
+
+    deleteTag(tag) {
+        this.dao.findById(tag._id).then((tag) => {
+            return tag.remove();
+        }).then(() => {
+            return this.getAllTags();
+        }).then((tags) => {
+            this.messageService.sendMessage(IO_EVENT.TAG_LIST_UPDATED, tags);
+        });
     }
 
 }

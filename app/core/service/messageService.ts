@@ -1,7 +1,7 @@
 /// <reference path="../../../typings/tsd.d.ts" />
 export class MessageService {
 
-    constructor(private socket:Socket,  private io) { 
+    constructor(private socket,  private io) { 
     }
 
 
