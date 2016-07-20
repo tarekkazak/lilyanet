@@ -10,59 +10,6 @@ import {WordDependentMediator} from '../mediators/wordDependentMediator';
 import {WordCreateUpdateDeleteMediator} from '../mediators/wordCreateUpdateDeleteMediator';
 import {mediate} from '../mediators/abstractMediator';
 
-    const FormGroup = (props) => {
-        return(
-              <div className="form-group">
-                  <label className="col-md-2">{props.label}</label>
-                  <div className={"col-md-" + props.colWidth}>
-                      {props.children}
-                  </div>
-              </div>
-
-              );
-    };
-
-    const trace = (message) => (input) => { 
-        console.log(message, input) ;
-        return input;
-    };
-
-    const Col = (props) => <div className={"col-md-" + props.colWidth}>{props.children}</div>;
-    const Row = (props) => <div className="row"> {props.children} </div>;
-
-    const wordValueFormItem = (props) => {
-        return (
-            <div className="form-horizontal">
-                <FormGroup label="Add word" colWidth="10"  >
-                    <input className="form-control" value={props.wordValue}  type="text" ref="wordInput"  />
-                </FormGroup>
-                
-                {props.tagSelector}
-            </div>
-
-         );
-    };
-
-    const syllablesFormItem = (props) => {
-        return (
-            <div className="form-horizontal">
-                <FormGroup label="Syllables" colWidth="10"  >
-                    <input className="form-control" type="text" ref="syllables" value={props.syllables}  />
-                </FormGroup>
-            </div>   
-
-        );
-    };
-
-    const selectedImagesFormItem = (props) => {
-        return (
-
-            <FormGroup label="Images" colWidth="10" >
-                    <ul className="list-inline">{props.selectedImages} </ul>
-                    <button  type="button" onClick={props.deleteAllImages} className="close" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-            </FormGroup>
-            );
-        };
 
 @mediate(WordDependentMediator, WordCreateUpdateDeleteMediator)
 export class WordSelector extends React.Component<any, any> {

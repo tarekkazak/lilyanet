@@ -5,7 +5,7 @@ module.exports = function(grunt) {
                 reload:true
             },
             server : {
-                files : ['app/common/**/*.ts','app/core/**/*.ts', 'server.js'],
+                files : ['app/core/**/*.ts', 'server.js'],
                 tasks : ['ts:server'],
                 options : {
                     interrupt : false,
@@ -61,8 +61,8 @@ module.exports = function(grunt) {
                    //nodeArgs : ['--debug-brk'],
                     watch : ['app/server.js'],
                     env : {
-                        PORT : '5500',
-                        SOCKET_SERVER:'http://192.168.1.107:3300',
+                        PORT : '3000',
+                        SOCKET_SERVER:'http://preview.piyfzswjiznkx1orib610hnhlpn45cdicz6tods5s1vbcsor.box.codeanywhere.com:3300',
                         ENVIRONMENT : 'DEV'
                     }
                 }
@@ -116,7 +116,7 @@ module.exports = function(grunt) {
         },
         concurrent : {
             dev : {
-                tasks : ['watch:dev','watch:server', 'nodemon:dev'],
+                tasks : ['ts:server', 'watch:dev','nodemon:dev'],
                 options : {
                     logConcurrentOutput : true,
                     limit:5
@@ -163,7 +163,6 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-browserify');
     grunt.loadNpmTasks('grunt-concurrent');
     grunt.loadNpmTasks('grunt-contrib-watch');
-    grunt.loadNpmTasks('grunt-jasmine-nodejs');
     grunt.loadNpmTasks('grunt-nodemon');
     grunt.loadNpmTasks('grunt-sass');
     grunt.loadNpmTasks('grunt-ts');
