@@ -28,7 +28,6 @@ build/Release
 node_modules
 
 *.js.map
-app/**/*.js
 !server.js
 *.spec.js
 typings
